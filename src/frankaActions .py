@@ -567,7 +567,7 @@ class MoveGroupPythonInterfaceTutorial(object):
         cylpose.pose.position.y = 0
         cylpose.pose.position.z = 0.769067
         cylpose.pose.orientation.w = 1.0
-        self.scene.add_box("Ecoforms_Plant_Container_Urn_55_Mocha", cylpose,size = (0.04,0.04,0.1))
+        self.scene.add_box("unit_cylinder", cylpose,size = (0.04,0.04,0.1))
         '''
 
     def go_to_pose_goal(self, x, y, z,  ox, oy, oz, ow):
@@ -697,13 +697,13 @@ class MoveGroupPythonInterfaceTutorial(object):
         self.move_group.set_goal_joint_tolerance(0.05)
         #Call pick to pick up the object using the grasps given
         self.move_group.set_end_effector_link("panda_hand_tcp") #panda_leftfinger
-        signal = self.move_group.pick("Ecoforms_Plant_Container_Urn_55_Mocha", [grasp])
+        signal = self.move_group.pick("unit_cylinder", [grasp])
         #print(signal)
         return signal
         
     def attach_box(self, attach_srv):
         
-        #self.box_name = "Ecoforms_Plant_Container_Urn_55_Mocha"
+        #self.box_name = "unit_cylinder"
         robot = self.robot
         scene = self.scene
         eef_link = self.eef_link
@@ -711,7 +711,7 @@ class MoveGroupPythonInterfaceTutorial(object):
         req = AttachRequest()
         req.model_name_1 = "panda"
         req.link_name_1 = "panda_leftfinger"
-        req.model_name_2 = "Ecoforms_Plant_Container_Urn_55_Mocha"
+        req.model_name_2 = "unit_cylinder"
         req.link_name_2 = "link_0"
         
         attach_srv.call(req)
@@ -755,7 +755,7 @@ class MoveGroupPythonInterfaceTutorial(object):
     	self.move_group.set_support_surface_name("table")
     	self.move_group.set_goal_joint_tolerance(0.05)
     	#Call pick to pick up the object using the grasps given
-    	self.move_group.place("Ecoforms_Plant_Container_Urn_55_Mocha", [place_location])
+    	self.move_group.place("unit_cylinder", [place_location])
     
     def detach_object(self, detach_srv):
         scene = self.scene
@@ -764,7 +764,7 @@ class MoveGroupPythonInterfaceTutorial(object):
         req = AttachRequest()
         req.model_name_1 = "panda"
         req.link_name_1 = "panda_leftfinger"
-        req.model_name_2 = "Ecoforms_Plant_Container_Urn_55_Mocha"
+        req.model_name_2 = "unit_cylinder"
         req.link_name_2 = "link_0"
         
         detach_srv.call(req)        
@@ -880,16 +880,16 @@ class MoveGroupPythonInterfaceTutorial(object):
         #cylpose.pose.orientation.y = 0#-0.00451694
         #cylpose.pose.orientation.z = 0#-0.02485613
         #cylpose.pose.orientation.w = 1#0.35097694
-        scene.add_box("Ecoforms_Plant_Container_Urn_55_Mocha", cylpose,size = (object_size[0],object_size[1],object_size[2]))
+        scene.add_box("unit_cylinder", cylpose,size = (object_size[0],object_size[1],object_size[2]))
         
         print("objetos", scene.get_known_object_names())
         
         
 def main():
     global object_size
-    object_size = [0.15,0.15,0.16]
+    object_size = [0.08,0.08,0.1]
     global object_position
-    object_position = [0.496867, -0.546819]
+    object_position = [0.649997, 0.000003]
     tutorial = MoveGroupPythonInterfaceTutorial()
     
     tutorial.addCollisionObjects()
@@ -938,7 +938,7 @@ def main():
     rospy.sleep(10.)
     gazObjStates = rospy.wait_for_message("/gazebo/model_states", ModelStates, timeout=20)
     objNames = np.array(gazObjStates.name)
-    cylIndex = np.argwhere( objNames=="Ecoforms_Plant_Container_Urn_55_Mocha" )
+    cylIndex = np.argwhere( objNames=="unit_cylinder" )
     cylPose = np.array(gazObjStates.pose)[cylIndex]
     initObjPose = pos2HTM(cylPose[0][0])
     mug = geometry_msgs.msg.TransformStamped()
@@ -1102,7 +1102,7 @@ def main():
         
         gazObjStates = rospy.wait_for_message("/gazebo/model_states", ModelStates, timeout=20)
         objNames = np.array(gazObjStates.name)
-        cylIndex = np.argwhere( objNames=="Ecoforms_Plant_Container_Urn_55_Mocha" )
+        cylIndex = np.argwhere( objNames=="unit_cylinder" )
         cylPose = np.array(gazObjStates.pose)[cylIndex]
         Tw_obj = pos2HTM(cylPose[0][0])
 
