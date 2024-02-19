@@ -53,7 +53,7 @@ def covGraphic(covPercentageNoAdj , covPercentageAdj):
    plt.xlim([0,100])  
    for index, value in enumerate(y):
       plt.text(value, index,str(value))
-   plt.savefig("/home/josepatino/ros/noetic/system/src/franka_vp/src/StatisticsGraphics/squares.png") 
+   plt.savefig("/home/ivokosa/Desktop/dataStatisticsGraphics/squares.png") 
    plt.show()
    
 
