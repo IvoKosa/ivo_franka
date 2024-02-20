@@ -53,7 +53,7 @@ def covGraphic(covPercentageNoAdj , covPercentageAdj):
    plt.xlim([0,100])  
    for index, value in enumerate(y):
       plt.text(value, index,str(value))
-   plt.savefig("/home/ivokosa/Desktop/dataStatisticsGraphics/squares.png") 
+   plt.savefig("/home/ivokosa/squares.png") 
    plt.show()
    
 
@@ -96,6 +96,7 @@ def removeOutBBX(pcd, center, size, transformation):
     #print(np.linalg.norm(uz))
     R = np.hstack( [np.hstack([ux,uy]),uz] )
     #print("R: ",R)
+    #
     bbx=o3d.geometry.OrientedBoundingBox(centerTr, R, size+0.00003)
     indexs = bbx.get_point_indices_within_bounding_box(pcd.points)
     #print(indexs)
@@ -483,7 +484,107 @@ def getBestTTGrasp(grasp,scores):
    
       
 
+def GPD(regPCD,Tw_c, tB):
+   pers = [0,18,22, 1, 31, 2, 30, 3, 29, 4, 28, 5, 27, 6, 26, 7, 25, 8, 24, 9, 23, 10, 21, 11, 20, 12, 19, 12,18,14,17,15,16]
+   v=0
+   n_grasps = 0
+   Tcam_grasps = 0
+   scores = 0
+   Tn_0 = 0
+   
+   while n_grasps<10:
+      intrinsic = o3d.camera.PinholeCameraIntrinsic(1280,720, 924.2759399414062, 924.2759399414062, 640, 360)
+      rvs2dc = np.vstack( ( np.hstack( ( R.from_euler('z', -90, degrees=True).as_matrix(), np.zeros([3,1]) ) ) , np.array([[0,0,0,1]]) ) ) 
+      #print(rvs2dc)
+      pcd2Grasp = copy.deepcopy(regPCD)
+      
+      
+      Q0_n = tB.lookup_transform('tf_d0', 'tf_d'+str(pers[v]), rospy.Time(0), rospy.Duration(10.0))
+      Tn_0=np.linalg.inv(pose2HTM(Q0_n.transform))
+      #np.save("T22_0.npy", T14_0)
+      Tn_0[:3,3] = Tn_0[:3,3]/1000
 
+      pcd2Grasp.transform(Tn_0)
+      pcd2Grasp.transform(rvs2dc)
+
+      origin = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.00001) 
+      o3d.visualization.draw_geometries([pcd2Grasp,origin])
+      [depthoutputimg, coloroutputimg] = pcd2RGBD(pcd2Grasp,intrinsic)
+      dImage = o3d.geometry.Image(np.array(depthoutputimg/1000000).astype(np.float32))
+      ci = o3d.geometry.Image(coloroutputimg)
+      rgbd = o3d.geometry.RGBDImage.create_from_color_and_depth(ci, dImage)
+      pcd = o3d.geometry.PointCloud.create_from_rgbd_image(rgbd, intrinsic)
+      o3d.visualization.draw_geometries([pcd, pcd2Grasp,origin])
+      depthoutputimg = depthoutputimg/1000
+      #print(depthoutputimg[np.nonzero(depthoutputimg)])
+      data_dict = {
+            "rgb": np.array(coloroutputimg),
+            #"depth_raw": self.depth_array / 1000.0,
+            "depth": np.array(depthoutputimg) ,
+            #"label": np.zeros((720, 1280), dtype=np.uint8),
+            "K": K,
+        }
+      np.save("/home/josepatino/ros/noetic/system/src/franka_vp/src/RawScene" + "/raw_capture.npy", data_dict)
+      
+      print("hi")
+      shellscript = subprocess.Popen(["/home/josepatino/ros/noetic/system/src/franka_vp/src/graspnet.sh"], stdin=subprocess.PIPE)
+      #shellscript.stdin.write("yes\n")
+      shellscript.stdin.close()
+      returncode = shellscript.wait()
+      pred = np.load("/home/josepatino/ros/noetic/system/src/franka_vp/src/GPDresults/predictionsCam1.npz",allow_pickle=True)
+      Tcam_grasps = pred['pred_grasps_cam'][()][-1]
+      print("n_graps: ",len(Tcam_grasps))
+      n_grasps = len(Tcam_grasps)
+      scores = pred['scores'][()][-1]
+      print("GPD: ", Tcam_grasps)
+
+      v=v+1
+    
+   #print("GPDOrientation: ",graspTest[:3,:3])
+   Tn_0[:3,3] = Tn_0[:3,3]*1000
+   tfBuffer = tf2_ros.Buffer()
+   listener = tf2_ros.TransformListener(tfBuffer)
+   Tw_cam0 = Tw_c#tfBuffer.lookup_transform('world', 'camera_depth_optical_frame', rospy.Time(0), rospy.Duration(10.0)) #tutorial.move_group.get_current_pose(end_effector_link = "camera_link").pose
+   print(Tw_cam0.header.frame_id)
+   Tw_cam0 = pose2HTM(Tw_cam0.transform)
+   #print("Tw_cam: ", Tw_cam0)
+   #print("Tcam_grasps: ", Tcam_grasps)
+   
+   rrotate = np.vstack( ( np.hstack( ( R.from_euler('z', -90, degrees=True).as_matrix(), np.zeros([3,1]) ) ) , np.array([[0,0,0,1]]) ) )
+   Tw_0 = np.matmul(Tw_cam0,rrotate)
+   T0_n = np.linalg.inv(Tn_0)
+   Tw_n =  np.matmul(Tw_0,T0_n)
+   rrotate = np.vstack( ( np.hstack( ( R.from_euler('z', 90, degrees=True).as_matrix(), np.zeros([3,1]) ) ) , np.array([[0,0,0,1]]) ) )
+   Tw_camn = np.matmul(Tw_n,rrotate)
+   
+   Tw_grasps = np.matmul(Tw_camn,Tcam_grasps)
+   #print("Tw_grasps: ", Tw_grasps)
+   #rospy.sleep(10)
+   #np.save("GPDresults/gw.npy",Tw_grasps)
+   #np.save("GPDresults/sc.npy",scores)
+   [near2FarGrasps, topIndex] = getBestTTGrasp(Tw_grasps,scores) #near2FarGrasps ordenadas por distancias, topIndex mas perpendiculares
+   
+   
+   
+   
+   '''
+   graspTestRotation = R.from_matrix(Tw_n[:3,:3]).as_quat()
+   t2 = geometry_msgs.msg.TransformStamped()
+   t2.header.frame_id = "world"
+   t2.header.stamp = rospy.get_rostime()
+   t2.child_frame_id = "graspTest"
+   t2.transform.translation.x = Tw_n[0,3]
+   t2.transform.translation.y = Tw_n[1,3]
+   t2.transform.translation.z = Tw_n[2,3]
+   t2.transform.rotation.x = graspTestRotation[0]
+   t2.transform.rotation.y = graspTestRotation[1]
+   t2.transform.rotation.z = graspTestRotation[2]
+   t2.transform.rotation.w = graspTestRotation[3]
+   '''
+
+   #Tw_grasp[:3,:3] = np.matmul(Tw_grasp[:3,:3],rrotate[:3,:3])
+   #bestGPlist.append(Tw_grasp)
+   return [near2FarGrasps, topIndex]
 
 class MoveGroupPythonInterfaceTutorial(object):
     """MoveGroupPythonInterfaceTutorial"""
@@ -722,7 +823,7 @@ class MoveGroupPythonInterfaceTutorial(object):
 
         
     def place(self, position):
-place_location = moveit_msgs.msg.PlaceLocation()
+    	place_location = moveit_msgs.msg.PlaceLocation()
     	place_location.place_pose.header.frame_id = "world"
     	
     	q_orig = quaternion_from_euler(0, 0, 0)
@@ -874,13 +975,37 @@ place_location = moveit_msgs.msg.PlaceLocation()
         cylpose.header.frame_id = self.planning_frame 
         cylpose.pose.position.x = object_position[0]
         cylpose.pose.position.y = object_position[1]
-        cylpose.pose.position.z = 0.725+object_size[2]/2
+        cylpose.pose.position.z = 0.725 +object_size[2]/2
         #-0.93604324, -0.00451694, -0.02485613,  0.35097694
         #cylpose.pose.orientation.x = 0#-0.93604324
         #cylpose.pose.orientation.y = 0#-0.00451694
         #cylpose.pose.orientation.z = 0#-0.02485613
         #cylpose.pose.orientation.w = 1#0.35097694
         scene.add_box("unit_cylinder", cylpose,size = (object_size[0],object_size[1],object_size[2]))
+
+    def addCollisionObjects(self):
+        scene = self.scene
+        
+        table = geometry_msgs.msg.PoseStamped()
+        table.header.frame_id = self.planning_frame 
+        table.pose.position.x =  0
+        table.pose.position.y = 0
+        table.pose.position.z = 0.365
+        table.pose.orientation.z = 0
+        scene.add_box("table", table,size = (0.8,1.58,0.72))
+        
+        wall = geometry_msgs.msg.PoseStamped()
+        wall.header.frame_id = self.planning_frame 
+        wall.pose.position.x =  -0.54
+        wall.pose.position.y = 0
+        wall.pose.position.z = 1.25
+        wall.pose.orientation.z = 0
+        scene.add_box("wall", wall,size = (0.1,2.5,2.5))
+        
+        cylpose = geometry_msgs.msg.PoseStamped() #0.210321, -0.210319
+        cylpose.header.frame_id = self.planning_frame 
+        cylpose.pose.position.x = object_position[0]
+        cylpose.pose.position.y = object_position[1]
         
         print("objetos", scene.get_known_object_names())
         
@@ -889,7 +1014,7 @@ def main():
     global object_size
     object_size = [0.08,0.08,0.1]
     global object_position
-    object_position = [0.649997, 0.000003]
+    object_position = [0.649997, 0]
     tutorial = MoveGroupPythonInterfaceTutorial()
     
     tutorial.addCollisionObjects()
@@ -1038,7 +1163,7 @@ def main():
     Qw_c = 0
     for i in range(len(vsTargets)):
      #br.sendTransform(bestGrasp)
-      
+     
      #br.sendTransform([t,t2,t3,t4,t5,t6])
      vsUpdatePub.publish(vsUpdateMsg)
      if (update==1):
@@ -1158,11 +1283,34 @@ def main():
     #to here
 
     
-    #graspFinal = getBestTTGrasp(np.array(bestGPlist),np.array(bestSClist))  
+    #graspFinal = getBestTTGrasp(np.array(bestGPlist),np.array(bestSClist))
+    [near2FarGrasps, topIndex]=GPD(regPCD, Qw_c, tfBuffer)    
     #print("bestGPlist:", graspFinal)
     #rospy.sleep(5) 
     
-   
+    exito = -1
+    candidate=0
+    pick_pos = []
+    while exito == -1 and candidate< len(topIndex):
+       selGrasp = near2FarGrasps[topIndex[candidate]]
+       print("selGrasp: ", selGrasp)
+       graspFinal = graspHTM2msg(selGrasp)
+       print("z: ",graspFinal.transform.translation.z)
+       if graspFinal.transform.translation.z<0.71:
+          graspFinal.transform.translation.z += 0.725
+          print("z: ",graspFinal.transform.translation.z)
+       
+       rospy.sleep(5)
+       pick_pos = [graspFinal.transform.translation.x,graspFinal.transform.translation.y,graspFinal.transform.translation.z]#[graspFinal[0,3],graspFinal[1,3],graspFinal[2,3]]#0.904
+       exito = tutorial.pick(pick_pos, graspFinal.transform.rotation.x,graspFinal.transform.rotation.y,graspFinal.transform.rotation.z, graspFinal.transform.rotation.w)#graspTestRotation[0],graspTestRotation[1],graspTestRotation[2],graspTestRotation[3])
+       print("exitoPick: ", exito)
+       print([pick_pos[0],pick_pos[1],pick_pos[2],graspFinal.transform.rotation.x,graspFinal.transform.rotation.y,graspFinal.transform.rotation.z, graspFinal.transform.rotation.w])
+
+       br.sendTransform(graspFinal)
+       candidate = candidate+1
+
+    
+
     
     #rospy.sleep(5)
     '''
@@ -1181,10 +1329,139 @@ def main():
     br.sendTransform(t2)
     '''
 
+    if exito != -1:
+       tutorial.attach_box(attach_srv)
+       d = -0.45#-0.33
+       direction = np.array([initObjPose[0,3],initObjPose[1,3]])
+       norm = np.linalg.norm(direction)
+       xyPlace = np.array([pick_pos[0],pick_pos[1]]) + d*(direction/norm)
+       place_pos = [xyPlace[0],xyPlace[1],0.8]#0.8#graspFinal[2,3]]#0.909 muy arriba con 0.909, manana intentar con 0.5 (entre 0.5 y 0.909)
+       print(place_pos)
+       cartesian_plan, fraction = tutorial.plan_cartesian_path(place_pos[0],place_pos[1])
+       tutorial.execute_plan(cartesian_plan)
+       #tutorial.place(place_pos)
+       rospy.sleep(10)
+       tutorial.detach_object(detach_srv)
+       rospy.sleep(20)
+       plan, fraction = tutorial.retract(0.08)
+       tutorial.execute_plan(plan)
+
 
     tutorial.go_to_pose_goal( 0.35745, 0.028111, 0.532,  -0.00066075, 0.71554, -0.0004089, 0.698572)
+    '''
+    pick_pos = [graspFinal[0,3],graspFinal[1,3],graspFinal[2,3]]#0.904
+    tutorial.pick(pick_pos, graspTestRotation[0],graspTestRotation[1],graspTestRotation[2],graspTestRotation[3])
+    print([graspFinal[0,3],graspFinal[1,3],graspFinal[2,3],graspTestRotation[0],graspTestRotation[1],graspTestRotation[2],graspTestRotation[3]])
+    tutorial.attach_box(attach_srv)
+    d = 0.25#-0.33
+    direction = np.array([initObjPose[0,3],initObjPose[1,3]])
+    norm = np.linalg.norm(direction)
+    xyPlace = np.array([0.4883865335922,0.35754365851]) + d*(direction/norm)
+    place_pos = [xyPlace[0],xyPlace[1],0.8]#0.8#graspFinal[2,3]]#0.909 muy arriba con 0.909, manana intentar con 0.5 (entre 0.5 y 0.909)
+    print(place_pos)
+    rospy.sleep(5)
+    tutorial.place(place_pos)
+    rospy.sleep(10)
+    tutorial.detach_object(detach_srv)
+    rospy.sleep(20)
+    tutorial.go_to_pose_goal( 0.35745, 0.028111, 0.532,  -0.00066075, 0.71554, -0.0004089, 0.698572)
+    '''
+    '''
+    pick_pos = [graspFinal[0,3],graspFinal[1,3],graspFinal[2,3]]#0.904
+    tutorial.pick(pick_pos, graspTestRotation[0],graspTestRotation[1],graspTestRotation[2],graspTestRotation[3])
+    print([graspFinal[0,3],graspFinal[1,3],graspFinal[2,3],graspTestRotation[0],graspTestRotation[1],graspTestRotation[2],graspTestRotation[3]])
+    tutorial.attach_box(attach_srv)
+    d = -0.2
+    direction = np.array([initObjPose[0,3],initObjPose[1,3]])
+    norm = np.linalg.norm(direction)
+    xyPlace = np.array([graspFinal[0,3], graspFinal[1,3]]) + d*(direction/norm)
+    place_pos = [xyPlace[0],xyPlace[1],0.7]#graspFinal[2,3]]#0.909 muy arriba con 0.909, manana intentar con 0.5 (entre 0.5 y 0.909)
+    print(place_pos)
+    rospy.sleep(5)
+    tutorial.place(place_pos)
+    rospy.sleep(10)
+    tutorial.detach_object(detach_srv)
+    rospy.sleep(20)
+    tutorial.go_to_pose_goal( 0.35745, 0.028111, 0.532,  -0.00066075, 0.71554, -0.0004089, 0.698572)
+    '''
+    rospy.sleep(10.)
+    gazObjStates1 = rospy.wait_for_message("/gazebo/model_states", ModelStates, timeout=20)
+    objNames1 = np.array(gazObjStates1.name)
+    cylIndex1 = np.argwhere( objNames1=="unit_cylinder" )
+    cylPose1 = np.array(gazObjStates1.pose)[cylIndex1]
+    currObjPose = pos2HTM(cylPose1[0][0])
+    final_angle =  np.arctan2(currObjPose[1,0], currObjPose[0,0])
+    #print("cylPoseX", cylPose[0][0].position.x)
+    #print("cylPoseY", cylPose[0][0].position.y)
+    #print("cylPoseZ", cylPose[0][0].position.z)
+    angDisplacement = final_angle - initial_angle
+    vsUpdateMsg.data = [1, cylPose1[0][0].position.x,cylPose1[0][0].position.y,cylPose1[0][0].position.z + lCentroz, angDisplacement]
+    vsUpdatePub.publish(vsUpdateMsg)
     
- 
+    
+    missingViews = np.argwhere( vsMask==0 )
+    print("missingViews: ", missingViews)
+    vsTargets = getTFPose()
+    #vsTargets = vsTargets[vsMask]
+    
+    #Por ahora pondre codigo aqui para continuar con la reconstruccion en otra pose, pero seria bueno incluir una condicion para evitar repetir codigo 
+    for i in missingViews:
+     i = i[0]
+     
+     #gazObjStates = rospy.wait_for_message("/gazebo/model_states", ModelStates, timeout=20)
+     #objNames = np.array(gazObjStates.name)
+     #cylIndex = np.argwhere( objNames=="unit_cylinder" )
+     #cylPose = np.array(gazObjStates.pose)[cylIndex]
+     #vsUpdateMsg.data = [1, cylPose[0][0].position.x,cylPose[0][0].position.y,0.09, 0]
+     #vsUpdatePub.publish(vsUpdateMsg)
+     #vsTargets = getTFPose()
+     print(i)
+     
+     print(vsTargets[i])
+     rec = rectification(vsTargets[i].orientation.x, vsTargets[i].orientation.y, vsTargets[i].orientation.z, vsTargets[i].orientation.w) # rectification to align camera x axis with targets z axis
+     print(rec)
+     
+     vsTargets[i].orientation.x = rec[0]
+     vsTargets[i].orientation.y = rec[1]
+     vsTargets[i].orientation.z = rec[2]
+     vsTargets[i].orientation.w = rec[3]
+     print(vsTargets[i])
+     print("------------")
+     
+     if vsTargets[i].position.x>0.15:
+      exito = tutorial.go_to_pose_goal(vsTargets[i].position.x, vsTargets[i].position.y, vsTargets[i].position.z, vsTargets[i].orientation.x, vsTargets[i].orientation.y,vsTargets[i].orientation.z, vsTargets[i].orientation.w)
+     else:
+      exito =[False, False]  
+
+     if exito[0] == True and exito[1] == True and vsTargets[i].position.x>0.15:
+      #Seguir con el proceso
+      rospy.sleep(5) 
+      vsMask[i] = 1
+      print("Exito: ", exito)
+      transformation = getVSTF(i)
+      color_topic = "/camera/color/image_raw"
+      colorImage = rospy.wait_for_message(color_topic, Image, timeout=20)
+      color_callback(colorImage)
+      depth_topic = "/camera/aligned_depth_to_color/image_raw"
+      depthImage = rospy.wait_for_message(depth_topic, Image, timeout=20)
+      depth_callback(depthImage)
+      cam_topic = "/camera/aligned_depth_to_color/camera_info"
+      camInfo = rospy.wait_for_message(cam_topic, CameraInfo, timeout=20)
+      currPCD = camera_info_callback(camInfo,i)
+      print("hola1")
+      
+      print("hola2")
+      threshold = 0.02/100000
+      #reg_p2p = o3d.pipelines.registration.registration_icp(currPCD, regPCD, threshold, transformation, o3d.pipelines.registration.TransformationEstimationPointToPoint(),  
+      #o3d.pipelines.registration.ICPConvergenceCriteria(max_iteration=2000))
+      #print("hola3")
+      regPCD = draw_registration_result(currPCD, regPCD, transformation,Tw_0)
+      print("hola4")
+     
+    numViewsAfter = np.count_nonzero(vsMask == 1)
+    covPercentageNoAdj = (numViewsOne/len(vsMask))*100
+    covPercentageAdj = (numViewsAfter/len(vsMask))*100 
+    covGraphic(covPercentageNoAdj , covPercentageAdj)
 
 
     #################################################################################################################################################
