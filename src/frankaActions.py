@@ -56,7 +56,6 @@ def covGraphic(covPercentageNoAdj , covPercentageAdj):
    plt.savefig("/home/ivokosa/squares.png") 
    plt.show()
    
-
 def RANSAC(pcd, dt,rn,ni):
     plane_model, inliers = pcd.segment_plane(distance_threshold=dt, ransac_n=rn,num_iterations=ni)
     [a, b, c, d] = plane_model

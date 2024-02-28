@@ -69,7 +69,7 @@ int main(int argc, char** argv){
     ros::Rate loop_rate(10);
     
     Eigen::Vector3d c(0.65, 0, 0.09);
-    double r=0.28; 
+    double r=0.1+0.25; 
     View_Space view_space(c,r);
     tf2_ros::TransformBroadcaster tfb;
     
