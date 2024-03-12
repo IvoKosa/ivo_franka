@@ -14,7 +14,6 @@ class MoveGroupPyInterface(object):
         super(MoveGroupPyInterface, self).__init__()
 
         moveit_commander.roscpp_initialize(sys.argv)
-        # rospy.init_node("move_group_python_interface", anonymous=True)
 
         robot = moveit_commander.RobotCommander()
         scene = moveit_commander.PlanningSceneInterface()
@@ -96,7 +95,6 @@ class MoveGroupPyInterface(object):
     def execute_plan(self, plan):
 
         move_group = self.move_group
-
         move_group.execute(plan, wait=True)
 
     def addCollisionObjects(self):
@@ -150,16 +148,18 @@ class MoveGroupPyInterface(object):
                                         0.01,        # eef_step
                                         0.0)         # jump_threshold
         
-        return plan, fraction
+        return plan
 
 def main():
+
+    rospy.init_node("move_group_python_interface", anonymous=True)
 
     move = MoveGroupPyInterface()
     move.addCollisionObjects()
 
     move.go_to_pose_goal(0.35745, 0.028111, 0.532,  -0.00066075, 0.71554, -0.0004089, 0.698572)
 
-    cartesian_plan, fraction = move.plan_cartesian_path()
+    cartesian_plan = move.plan_cartesian_path()
     
     move.execute_plan(cartesian_plan)
 

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import rospy
-import std_msgs.msg
 import geometry_msgs.msg
 import tf2_ros
 from scipy.spatial.transform import Rotation as R
@@ -10,6 +9,8 @@ import numpy as np
 from franka_move import MoveGroupPyInterface
 
 def rectification(x, y, z, w):
+    # Rectification to align camera x axis with targets z axis
+
     r = R.from_quat([x, y, z, w])
     ry = R.from_rotvec(np.pi/2 * np.array([0, 1, 0]))
     rz = R.from_rotvec(np.pi * np.array([0, 0, 1]))
@@ -17,7 +18,7 @@ def rectification(x, y, z, w):
     return Rtot.as_quat()
 
 def getTFPose():
-    views_size=32
+    views_size=3
     vsVector =[]
 
     tfBuffer = tf2_ros.Buffer()
@@ -36,8 +37,22 @@ def getTFPose():
         vsVector.append(target_pose)
     return vsVector  
 
-def coord_targets(vsTargets):
-    return 0
+def move_to_coords(vsTargets, move):
+    
+    for i in range(len(vsTargets)):
+        rec = rectification(vsTargets[i].orientation.x, vsTargets[i].orientation.y, vsTargets[i].orientation.z, vsTargets[i].orientation.w)
+        vsTargets[i].orientation.x = rec[0]
+        vsTargets[i].orientation.y = rec[1]
+        vsTargets[i].orientation.z = rec[2]
+        vsTargets[i].orientation.w = rec[3]
+
+        print("------- Moving pos", str(i), " -------")
+
+        move.go_to_pose_goal(vsTargets[i].position.x, vsTargets[i].position.y, vsTargets[i].position.z, vsTargets[i].orientation.x, vsTargets[i].orientation.y,vsTargets[i].orientation.z, vsTargets[i].orientation.w)
+
+        print("-------- Sleeping --------")
+
+        rospy.sleep(5)
 
 def main():
 
@@ -50,11 +65,9 @@ def main():
     move = MoveGroupPyInterface()
     move.addCollisionObjects()
 
-    move.go_to_pose_goal(0.35745, 0.028111, 0.532,  -0.00066075, 0.71554, -0.0004089, 0.698572)
+    move_to_coords(vsTargets, move)
 
-    cartesian_plan, fraction = move.plan_cartesian_path()
-    
-    move.execute_plan(cartesian_plan)
+    print("---------------------- Finished Planning ----------------------")
 
 if __name__ == '__main__':
     main()
