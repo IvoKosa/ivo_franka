@@ -23,6 +23,7 @@ from franka_move import MoveGroupPyInterface
 bridge = CvBridge()
 
 # ------------------------- Callback functions -------------------------
+
 def color_callback(msg):
     return bridge.imgmsg_to_cv2(msg, "rgb8")
 
@@ -40,10 +41,9 @@ def rectification(x, y, z, w):
     Rtot = r*ry*rz
     return Rtot.as_quat()
 
-# Get camera poses list of size: 'views_size' 
-#
-# To Do: Evenly distribute views 
 def getTFPose(views_size):
+
+    view_nums = [7, 9, 21] # [7, 9, 19, 21]
 
     vsVector =[]
 
@@ -51,7 +51,7 @@ def getTFPose(views_size):
     listener = tf2_ros.TransformListener(tfBuffer)
     target_pose = geometry_msgs.msg.TransformStamped()
 
-    for i in range(0, views_size):
+    for i in view_nums:
         frame = 'tf_d'+str(i)
         transformStamped = tfBuffer.lookup_transform('panda_link0', frame, rospy.Time(0), rospy.Duration(10.0))
         target_pose = geometry_msgs.msg.Pose()
@@ -61,6 +61,8 @@ def getTFPose(views_size):
         target_pose.position.z = transformStamped.transform.translation.z
         target_pose.orientation = transformStamped.transform.rotation
         vsVector.append(target_pose)
+
+        print("Saving: ", str(i))
     return vsVector  
 
 def move_to_coords(vsTargets, move):
@@ -75,7 +77,7 @@ def move_to_coords(vsTargets, move):
 
     print("-------- Sleeping --------")
 
-    rospy.sleep(2)
+    rospy.sleep(0.5)
 
 # ------------------------- 3D Stuff -------------------------
 
@@ -131,7 +133,7 @@ def removeOutBBX(pcd, center, size, transformation):
     finalPoints = []
 
     for i in boundTransformed:
-       finalPoints.append( [ i[0][0], i[1][0], i[2][0]] )
+    finalPoints.append( [ i[0][0], i[1][0], i[2][0]] )
 
     centerTr = np.matmul(T0_w, center2) 
     centerTr = np.array([centerTr[0][0],centerTr[1][0],centerTr[2][0]])
@@ -153,20 +155,12 @@ def removeOutBBX(pcd, center, size, transformation):
     return pcd
 
 def pose2HTM(pose): #transform stamped to HTM
-   p = np.array([ [pose.translation.x], [pose.translation.y], [pose.translation.z] ])
-   quat = pose.rotation
-   rotM = R.from_quat(np.array([quat.x, quat.y, quat.z, quat.w])).as_matrix()
-   HTM = np.hstack([rotM, p])
-   HTM = np.vstack([HTM, np.array([[0, 0, 0, 1]])])
-   return HTM
-
-def pos2HTM(pose):# Pose 2 HTM
-    p = np.array([ [pose.position.x], [pose.position.y], [pose.position.z] ])
-    quat = pose.orientation
-    rotM = R.from_quat(np.array([quat.x, quat.y, quat.z, quat.w])).as_matrix()
-    HTM = np.hstack([rotM, p])
-    HTM = np.vstack([HTM, np.array([[0, 0, 0, 1]])])
-    return HTM
+p = np.array([ [pose.translation.x], [pose.translation.y], [pose.translation.z] ])
+quat = pose.rotation
+rotM = R.from_quat(np.array([quat.x, quat.y, quat.z, quat.w])).as_matrix()
+HTM = np.hstack([rotM, p])
+HTM = np.vstack([HTM, np.array([[0, 0, 0, 1]])])
+return HTM
 
 def getVSTF():
     tfBuffer = tf2_ros.Buffer()
@@ -176,7 +170,7 @@ def getVSTF():
     y_pos = Q0_i.transform.translation.y
     z_pos = Q0_i.transform.translation.z  
     orientation = Q0_i.transform.rotation
-     
+    
     R0_i = R.from_quat([orientation.x, orientation.y, orientation.z, orientation.w]).as_matrix()
     t0_i = np.array([[x_pos],[y_pos],[z_pos]])/1000
     T0_i = np.hstack([R0_i, t0_i])
@@ -198,59 +192,12 @@ def draw_registration_result(source, target, transformation, Tw_0):
     # o3d.visualization.draw_geometries([pcdFin])
     return pcdFin    
 
-def to_3D(colour_img, depth_img, cam_info_msg):
-
-    cam_info = cam_info_msg.K
-    K = np.array(
-        [
-            [cam_info[0], 0.0, cam_info[2]],
-            [0.0, cam_info[4], cam_info[5]],
-            [0.0, 0.0, 0.0],
-        ]
-    )
-
-    di = o3d.geometry.Image( np.array(depth_img)/1000 )
-    ci = o3d.geometry.Image( np.array(colour_img) )
-
-    intrinsic = o3d.camera.PinholeCameraIntrinsic(cam_info_msg.width, cam_info_msg.height, cam_info[0], cam_info[4], cam_info[2], cam_info[5])
-    rgbd = o3d.geometry.RGBDImage.create_from_color_and_depth(ci, di)
-    pcd = o3d.geometry.PointCloud.create_from_rgbd_image(rgbd, intrinsic)
-    R = pcd.get_rotation_matrix_from_xyz((0,np.pi , np.pi))
-    pcd = pcd.rotate(R)
-    # o3d.visualization.draw_geometries([pcd])
-    
-    ic, oc = RANSAC(pcd,0.000002,200,1000)
-
-    final = outlierRemoval(oc,10,"z")
-    final.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.0001, max_nn=30))
-    final.orient_normals_towards_camera_location()
-    return final.voxel_down_sample(voxel_size=0.000005) #0.00001
-
 def cam_info_callback(color_img, depthimg, cam_info_msg):
-    # global K
     cam_info = cam_info_msg.K
-
-    # K = np.array(
-    #     [
-    #         [cam_info[0], 0.0, cam_info[2]],
-    #         [0.0, cam_info[4], cam_info[5]],
-    #         [0.0, 0.0, 0.0],
-    #     ]
-    # )
-
-    # data_dict = {
-    #         "rgb": np.array(color_img),
-    #         #"depth_raw": self.depth_array / 1000.0,
-    #         "depth": np.array(depthimg) / 1000.0,
-    #         "label": np.zeros((720, 1280), dtype=np.uint8),
-    #         "K": K,
-    #     }
     
     di = o3d.geometry.Image( np.array(depthimg)/1000 )
     ci = o3d.geometry.Image( ((np.array(color_img)[:, ::-1])) )
 
-    rospy.sleep(5)
-    
     intrinsic = o3d.camera.PinholeCameraIntrinsic(cam_info_msg.width, cam_info_msg.height, cam_info[0], cam_info[4], cam_info[2], cam_info[5])
     rgbd = o3d.geometry.RGBDImage.create_from_color_and_depth(ci, di, convert_rgb_to_intensity=False)
     pcd = o3d.geometry.PointCloud.create_from_rgbd_image(rgbd, intrinsic)
@@ -258,31 +205,29 @@ def cam_info_callback(color_img, depthimg, cam_info_msg):
     ic, oc = RANSAC(pcd,0.000002,200,1000)#0.000005,200,1000
 
     if len(np.asarray(oc.points))>66200:
-     ic2, oc2 = RANSAC(oc,0.000005,50,1000)#0.0000008,50,1000
-     if len(np.asarray(ic2.points))>23500:
-      ic = ic2
-      oc = oc2
+    ic2, oc2 = RANSAC(oc,0.000005,50,1000)#0.0000008,50,1000
+    if len(np.asarray(ic2.points))>23500:
+    ic = ic2
+    oc = oc2
 
     final = outlierRemoval(oc,10,"z")
     final.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.0001, max_nn=30))
     final.orient_normals_towards_camera_location()
     final = final.voxel_down_sample(voxel_size=0.000005) #0.00001
     return final
-    
-# ------------------------- Main -------------------------
-def main():
 
-    rospy.init_node("poses", anonymous=True)
-
-    vsTargets = getTFPose(2)
+def runner():
+    vsTargets = getTFPose(5)
 
     print(vsTargets)
 
     move = MoveGroupPyInterface()
     move.addCollisionObjects()
 
+    regPCD = o3d.geometry.PointCloud()
+
     for i in range(len(vsTargets)):
-        print("------- Moving pos", str(i), " -------")
+        print("-------------- Moving pos", str(i), " --------------")
 
         move_to_coords(vsTargets[i], move)
 
@@ -298,38 +243,13 @@ def main():
         depth_img = depth_callback(depthImage)
         currPCD = cam_info_callback(colour_img, depth_img, camInfo)
 
-        cv2.imwrite("/home/ivokosa/Desktop/3D_Mesh/col.png", colour_img)
-        cv2.imwrite("/home/ivokosa/Desktop/3D_Mesh/depth.png", depth_img)
+        colour_name = "/home/ivokosa/Desktop/3D_Mesh/colour_" + str(i) + ".png"
+        depth_name = "/home/ivokosa/Desktop/3D_Mesh/depth_" + str(i) + ".png"
+
+        cv2.imwrite(colour_name, colour_img)
+        cv2.imwrite(depth_name, depth_img)
 
         # -------------- -------------- -------------- --------------
-
-        regPCD = o3d.geometry.PointCloud()
-        # transformation = getVSTF(i)
-        # regPCD = draw_registration_result(currPCD, regPCD, transformation, Tw_0)
-        # o3d.io.write_point_cloud("/home/ivokosa/Desktop/3D_Mesh/cil.pcd",regPCD)
-        
-        br = tf2_ros.TransformBroadcaster()
-        vsMask= np.zeros(32)
-
-        # gazObjStates = rospy.wait_for_message("/gazebo/model_states", ModelStates, timeout=20)
-        # objNames = np.array(gazObjStates.name)
-        # cylIndex = np.argwhere( objNames=="unit_cylinder" )
-        # cylPose = np.array(gazObjStates.pose)[cylIndex]
-
-        # mug = geometry_msgs.msg.TransformStamped()
-        # mug.header.frame_id = "world"
-        # mug.child_frame_id = "Mug"
-        # mug.header.stamp = rospy.get_rostime()
-        # mug.transform.translation.x = cylPose[0][0].position.x
-        # mug.transform.translation.y = cylPose[0][0].position.y
-        # mug.transform.translation.z = cylPose[0][0].position.z
-        # mug.transform.rotation.x = cylPose[0][0].orientation.x
-        # mug.transform.rotation.y = cylPose[0][0].orientation.y
-        # mug.transform.rotation.z = cylPose[0][0].orientation.z
-        # mug.transform.rotation.w = cylPose[0][0].orientation.w
-
-        # # initial_angle = np.arctan2(initObjPose[1,0], initObjPose[0,0]) 
-        # br.sendTransform(mug)
 
         tfBuffer1 = tf2_ros.Buffer()
         listener1 = tf2_ros.TransformListener(tfBuffer1)
@@ -337,41 +257,83 @@ def main():
         
         transformation = getVSTF()
         regPCD = draw_registration_result(currPCD, regPCD, transformation, Tw_0)
-
-        # if i == 0:
-        #     transformation = getVSTF()
-        #     regPCD = draw_registration_result(currPCD, regPCD, transformation, Tw_0)
-        #     tfBuffer = tf2_ros.Buffer()
-        #     listener = tf2_ros.TransformListener(tfBuffer)
-        #     Q0_i = tfBuffer.lookup_transform('world', 'camera_depth_optical_frame', rospy.Time(0), rospy.Duration(10.0))
-        #     # Qw_c = Q0_i
-        #     # Tc_w=np.linalg.inv(pose2HTM(Q0_i.transform))
-        #     # x_pos = Q0_i.transform.translation.x
-        #     # y_pos = Q0_i.transform.translation.y
-        #     # z_pos = Q0_i.transform.translation.z  
-        #     # orientation = Q0_i.transform.rotation
-        #     # T0_c= pose2HTM((tfBuffer.lookup_transform('tf_d0', 'camera_depth_optical_frame', rospy.Time(0), rospy.Duration(10.0))).transform)
-            
-        #     gazObjStates = rospy.wait_for_message("/gazebo/model_states", ModelStates, timeout=20)
-        #     objNames = np.array(gazObjStates.name)
-        #     cylIndex = np.argwhere( objNames=="unit_cylinder" )
-        #     cylPose = np.array(gazObjStates.pose)[cylIndex]
-        #     Tw_obj = pos2HTM(cylPose[0][0])
-
-        #     mug.header.stamp = rospy.get_rostime()
-        #     # Td_l = np.matmul(T0_c,np.matmul(Tc_w,Tw_obj))
-        # else:
-        #     transformation = getVSTF()
-        #     # threshold = 0.02/100000
-        #     regPCD = draw_registration_result(currPCD, regPCD, transformation, Tw_0)
-
-        vsMask[i]=1
-
-        # o3d.visualization.draw_geometries([regPCD])
     
-    print("---------------------- Finished Planning ----------------------")
+    print("-------------- Finished Loop --------------")
 
-    rospy.spin()
+    origin = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.00001) 
+    # regPCD = regPCD.voxel_down_sample(voxel_size=0.00001) 
+    o3d.io.write_point_cloud("/home/ivokosa/Desktop/3D_Mesh/pcdFinal.ply", regPCD)
+    regPCD = outlierRemoval(regPCD,1,"total")
+    o3d.visualization.draw_geometries([regPCD,origin],point_show_normal=True,zoom=0.7,front=[ 0.0, 0.0, -1.0], lookat=[-8.947535058590317e-07, 3.6505334648302034e-05,0.00028049998945789412], up=[0.0, -1.0,0.0])
+    
+    # Poisson Algorithm
+    print("Poisson Algorithm")
+    mesh, densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(regPCD, depth=8)
+    o3d.visualization.draw_geometries([mesh,origin],zoom=0.7,front=[ 0.0, 0.0, -1.0], lookat=[-8.947535058590317e-07, 3.6505334648302034e-05,0.00028049998945789412], up=[0.0, -1.0,0.0])
+    mesh.compute_triangle_normals()
+    o3d.io.write_triangle_mesh("/home/ivokosa/Desktop/3D_Mesh/tstmesh.obj", mesh)
+
+    
+# ------------------------- Main -------------------------
+def main():
+
+    rospy.init_node("poses", anonymous=True)
+
+    vsTargets = getTFPose(5)
+
+    print(vsTargets)
+
+    move = MoveGroupPyInterface()
+    move.addCollisionObjects()
+
+    regPCD = o3d.geometry.PointCloud()
+
+    for i in range(len(vsTargets)):
+        print("-------------- Moving pos", str(i), " --------------")
+
+        move_to_coords(vsTargets[i], move)
+
+        color_topic = "/camera/color/image_raw"
+        depth_topic = "/camera/aligned_depth_to_color/image_raw"
+        cam_topic = "/camera/aligned_depth_to_color/camera_info"
+
+        colorImage = rospy.wait_for_message(color_topic, Image, timeout=20)
+        depthImage = rospy.wait_for_message(depth_topic, Image, timeout=20)
+        camInfo = rospy.wait_for_message(cam_topic, CameraInfo, timeout=20)
+
+        colour_img = color_callback(colorImage)
+        depth_img = depth_callback(depthImage)
+        currPCD = cam_info_callback(colour_img, depth_img, camInfo)
+
+        colour_name = "/home/ivokosa/Desktop/3D_Mesh/colour_" + str(i) + ".png"
+        depth_name = "/home/ivokosa/Desktop/3D_Mesh/depth_" + str(i) + ".png"
+
+        cv2.imwrite(colour_name, colour_img)
+        cv2.imwrite(depth_name, depth_img)
+
+        # -------------- -------------- -------------- --------------
+
+        tfBuffer1 = tf2_ros.Buffer()
+        listener1 = tf2_ros.TransformListener(tfBuffer1)
+        Tw_0 = pose2HTM( (tfBuffer1.lookup_transform('panda_link0', "tf_d0", rospy.Time(0), rospy.Duration(10.0))).transform )
+        
+        transformation = getVSTF()
+        regPCD = draw_registration_result(currPCD, regPCD, transformation, Tw_0)
+    
+    print("-------------- Finished Loop --------------")
+
+    origin = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.00001) 
+    # regPCD = regPCD.voxel_down_sample(voxel_size=0.00001) 
+    o3d.io.write_point_cloud("/home/ivokosa/Desktop/3D_Mesh/pcdFinal.ply", regPCD)
+    regPCD = outlierRemoval(regPCD,1,"total")
+    o3d.visualization.draw_geometries([regPCD,origin],point_show_normal=True,zoom=0.7,front=[ 0.0, 0.0, -1.0], lookat=[-8.947535058590317e-07, 3.6505334648302034e-05,0.00028049998945789412], up=[0.0, -1.0,0.0])
+    
+    # Poisson Algorithm
+    print("Poisson Algorithm")
+    mesh, densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(regPCD, depth=8)
+    o3d.visualization.draw_geometries([mesh,origin],zoom=0.7,front=[ 0.0, 0.0, -1.0], lookat=[-8.947535058590317e-07, 3.6505334648302034e-05,0.00028049998945789412], up=[0.0, -1.0,0.0])
+    mesh.compute_triangle_normals()
+    o3d.io.write_triangle_mesh("/home/ivokosa/Desktop/3D_Mesh/tstmesh.obj", mesh)
 
 if __name__ == '__main__':
     main()
