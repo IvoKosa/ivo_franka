@@ -133,7 +133,7 @@ def removeOutBBX(pcd, center, size, transformation):
     finalPoints = []
 
     for i in boundTransformed:
-    finalPoints.append( [ i[0][0], i[1][0], i[2][0]] )
+       finalPoints.append( [ i[0][0], i[1][0], i[2][0]] )
 
     centerTr = np.matmul(T0_w, center2) 
     centerTr = np.array([centerTr[0][0],centerTr[1][0],centerTr[2][0]])
@@ -155,12 +155,12 @@ def removeOutBBX(pcd, center, size, transformation):
     return pcd
 
 def pose2HTM(pose): #transform stamped to HTM
-p = np.array([ [pose.translation.x], [pose.translation.y], [pose.translation.z] ])
-quat = pose.rotation
-rotM = R.from_quat(np.array([quat.x, quat.y, quat.z, quat.w])).as_matrix()
-HTM = np.hstack([rotM, p])
-HTM = np.vstack([HTM, np.array([[0, 0, 0, 1]])])
-return HTM
+   p = np.array([ [pose.translation.x], [pose.translation.y], [pose.translation.z] ])
+   quat = pose.rotation
+   rotM = R.from_quat(np.array([quat.x, quat.y, quat.z, quat.w])).as_matrix()
+   HTM = np.hstack([rotM, p])
+   HTM = np.vstack([HTM, np.array([[0, 0, 0, 1]])])
+   return HTM
 
 def getVSTF():
     tfBuffer = tf2_ros.Buffer()
@@ -170,7 +170,7 @@ def getVSTF():
     y_pos = Q0_i.transform.translation.y
     z_pos = Q0_i.transform.translation.z  
     orientation = Q0_i.transform.rotation
-    
+     
     R0_i = R.from_quat([orientation.x, orientation.y, orientation.z, orientation.w]).as_matrix()
     t0_i = np.array([[x_pos],[y_pos],[z_pos]])/1000
     T0_i = np.hstack([R0_i, t0_i])
@@ -205,10 +205,10 @@ def cam_info_callback(color_img, depthimg, cam_info_msg):
     ic, oc = RANSAC(pcd,0.000002,200,1000)#0.000005,200,1000
 
     if len(np.asarray(oc.points))>66200:
-    ic2, oc2 = RANSAC(oc,0.000005,50,1000)#0.0000008,50,1000
-    if len(np.asarray(ic2.points))>23500:
-    ic = ic2
-    oc = oc2
+        ic2, oc2 = RANSAC(oc,0.000005,50,1000)#0.0000008,50,1000
+        if len(np.asarray(ic2.points))>23500:
+            ic = ic2
+            oc = oc2
 
     final = outlierRemoval(oc,10,"z")
     final.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.0001, max_nn=30))
