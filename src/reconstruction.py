@@ -19,10 +19,11 @@ from franka_move import MoveGroupPyInterface
 
 class ReconstructionSystem:
 
-    def __init__(self):
+    def __init__(self, vis=False):
 
         # Bridge to convert ROS image message to cv2 format
         self.bridge = CvBridge()
+        self.visualisations = vis
 
     # ------------------------- Callback functions -------------------------
 
@@ -43,9 +44,9 @@ class ReconstructionSystem:
         Rtot = r*ry*rz
         return Rtot.as_quat()
 
-    def getTFPose(self, views_size):
+    def getTFPose(self, view_poses):
 
-        view_nums = [7, 9, 21] # [7, 9, 19, 21]
+        # View Poses: a list of integers, representing 32 possible poses
 
         vsVector =[]
 
@@ -53,7 +54,7 @@ class ReconstructionSystem:
         listener = tf2_ros.TransformListener(tfBuffer)
         target_pose = geometry_msgs.msg.TransformStamped()
 
-        for i in view_nums:
+        for i in view_poses:
             frame = 'tf_d'+str(i)
             transformStamped = tfBuffer.lookup_transform('panda_link0', frame, rospy.Time(0), rospy.Duration(10.0))
             target_pose = geometry_msgs.msg.Pose()
@@ -152,7 +153,9 @@ class ReconstructionSystem:
         bbx=o3d.geometry.OrientedBoundingBox(centerTr, R, size+0.00003)
         indexs = bbx.get_point_indices_within_bounding_box(pcd.points)
         pcd = pcd.select_by_index(indexs)
-        o3d.visualization.draw_geometries([pcd,bbx])#,zoom=0.7,front=[ 0.0, 0.0, -1.0], lookat=[-8.947535058590317e-07, 3.6505334648302034e-05,0.00028049998945789412], up=[0.0, -1.0,0.0])
+
+        if self.visualisations:
+            o3d.visualization.draw_geometries([pcd,bbx])#,zoom=0.7,front=[ 0.0, 0.0, -1.0], lookat=[-8.947535058590317e-07, 3.6505334648302034e-05,0.00028049998945789412], up=[0.0, -1.0,0.0])
 
         return pcd
 
@@ -184,6 +187,9 @@ class ReconstructionSystem:
         object_size = [0.08,0.08,0.1]
         object_position = [0.649997, 0]
 
+        # object_size = [0.1,0.1,0.1]
+        # object_position = [0.705265, 0.002895]
+
         source_temp = copy.deepcopy(source)
         target_temp = copy.deepcopy(target)
         source_temp.transform(transformation)
@@ -191,7 +197,6 @@ class ReconstructionSystem:
         Tw_0cop =copy.deepcopy(Tw_0)
         ocz = (object_size[2]/2)#(0.725+(object_size[2]/2)) - ((0.725+(object_size[2]/2))-(object_size[2]/2)) #object center in z
         pcdFin = self.removeOutBBX(pcdFin, np.array([object_position[0], object_position[1], ocz]), np.array([object_size[0],object_size[1],object_size[2]]), Tw_0cop)
-        # o3d.visualization.draw_geometries([pcdFin])
         return pcdFin    
 
     def cam_info_callback(self, color_img, depthimg, cam_info_msg):
@@ -218,8 +223,8 @@ class ReconstructionSystem:
         final = final.voxel_down_sample(voxel_size=0.000005) #0.00001
         return final
 
-    def runner(self):
-        vsTargets = self.getTFPose(5)
+    def runner(self, view_poses):
+        vsTargets = self.getTFPose(view_poses)
 
         print(vsTargets)
 
@@ -266,14 +271,19 @@ class ReconstructionSystem:
         # regPCD = regPCD.voxel_down_sample(voxel_size=0.00001) 
         o3d.io.write_point_cloud("/home/ivokosa/Desktop/3D_Mesh/pcdFinal.ply", regPCD)
         regPCD = self.outlierRemoval(regPCD,1,"total")
-        o3d.visualization.draw_geometries([regPCD,origin],point_show_normal=True,zoom=0.7,front=[ 0.0, 0.0, -1.0], lookat=[-8.947535058590317e-07, 3.6505334648302034e-05,0.00028049998945789412], up=[0.0, -1.0,0.0])
+        if self.visualisations:
+            o3d.visualization.draw_geometries([regPCD,origin],point_show_normal=True,zoom=0.7,front=[ 0.0, 0.0, -1.0], lookat=[-8.947535058590317e-07, 3.6505334648302034e-05,0.00028049998945789412], up=[0.0, -1.0,0.0])
         
         # Poisson Algorithm
-        print("Poisson Algorithm")
-        mesh, densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(regPCD, depth=8)
-        o3d.visualization.draw_geometries([mesh,origin],zoom=0.7,front=[ 0.0, 0.0, -1.0], lookat=[-8.947535058590317e-07, 3.6505334648302034e-05,0.00028049998945789412], up=[0.0, -1.0,0.0])
-        mesh.compute_triangle_normals()
-        o3d.io.write_triangle_mesh("/home/ivokosa/Desktop/3D_Mesh/tstmesh.obj", mesh)
+        # print("Poisson Algorithm")
+        # mesh, densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(regPCD, depth=8)
+        # if self.visualisations:
+        #     o3d.visualization.draw_geometries([mesh,origin],zoom=0.7,front=[ 0.0, 0.0, -1.0], lookat=[-8.947535058590317e-07, 3.6505334648302034e-05,0.00028049998945789412], up=[0.0, -1.0,0.0])
+        # mesh.compute_triangle_normals()
+
+        return regPCD
+
+        # o3d.io.write_triangle_mesh("/home/ivokosa/Desktop/3D_Mesh/tstmesh.obj", mesh)
 
 # ------------------------- Main -------------------------
         
@@ -281,5 +291,7 @@ if __name__ == '__main__':
 
     rospy.init_node("Reconstruction_System", anonymous=True)
 
+    view_nums = [7, 9, 21] 
+
     reconstruct = ReconstructionSystem()
-    reconstruct.runner()
+    r = reconstruct.runner(view_nums)

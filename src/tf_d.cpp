@@ -61,15 +61,44 @@ int main(int argc, char** argv){
   }
   */
     ros::init(argc, argv, "my_tf2_broadcaster");
-    ros::NodeHandle n;
+    ros::NodeHandle n("~");
 
     //ros::Publisher chatter_pub = n.advertise<radar_msgs::RadarDetection>("srr2_detections", 1000);
     //ros::Subscriber sub = n.subscribe("/move_group/status", 1000, getStatus);
     ros::Subscriber sub2 = n.subscribe("/chatter", 1000, getState);
     ros::Rate loop_rate(10);
     
+    // Cylinder ivo-franka-full
     Eigen::Vector3d c(0.65, 0, 0.09);
-    double r=0.1+0.25; 
+    // Cylinder Closer
+    // Eigen::Vector3d c(0.43, 0, 0.09);
+    
+    double r = 0.35; 
+
+    std::vector<double> pos_list;
+    double sum = 0;
+
+    n.getParam("pos_list", pos_list);
+
+    for(unsigned i=0; i < pos_list.size(); i++) {
+      sum += pos_list[i];
+    }
+
+    cout << "HELO::::" << endl;
+    cout << sum << endl;
+
+    // if (n.getParam("pos_list", pos_list)) {
+    //   cout << "HELO::::" << endl;
+    // }
+
+    // int rad_param;
+
+    // n.getParam("pos_param", pos_param);
+    // n.getParam("rad_param", rad_param)
+
+    // ROS_INFO("Got parameter : %d", pos_param);
+    // cout << rad_param << endl
+
     View_Space view_space(c,r);
     tf2_ros::TransformBroadcaster tfb;
     
@@ -82,7 +111,7 @@ int main(int argc, char** argv){
             
             ros::spinOnce();
             if (estado== "CONTINUE" or estado_pre == estado){
-            cout<<"estadooo:"<<estado<<endl;
+            cout<<"State:"<<estado<<endl;
             //ros::spinOnce();
             vector<geometry_msgs::TransformStamped> tS = view_space.views2tStamped();
             tfb.sendTransform(tS);
@@ -100,10 +129,6 @@ int main(int argc, char** argv){
              //estado = "CONTINUE";
             }
             estado_pre = estado;
-            
-            
-            
-            
             
             //cout<<"estadooo:"<<exito<<endl;
             //cout<<"frame:"<<tf_frame<<endl;

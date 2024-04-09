@@ -381,7 +381,7 @@ def getTFPose():
    vsVector.append(target_pose)
   
   #print(vsVector)
-  return vsVector  
+  return vsVector
 
 def pos2HTM(pose):# Pose 2 HTM
    p = np.array([ [pose.position.x], [pose.position.y], [pose.position.z] ])
@@ -1148,7 +1148,7 @@ def main():
     rospy.sleep(5)
     tutorial.place(place_pos)
     rospy.sleep(10)
-    tutorial.detach_object(detach_srv)
+    tutorial.detach_opose2HTMbject(detach_srv)
     rospy.sleep(20)
     tutorial.go_to_pose_goal( 0.35745, 0.028111, 0.532,  -0.00066075, 0.71554, -0.0004089, 0.698572)
     '''
@@ -1160,6 +1160,11 @@ def main():
     #print("W0000000000:",Tw_0)
     #rospy.sleep(5)
     Qw_c = 0
+
+
+    # <---------------------- Loop for coordinates input ------------------------------------------------------------
+
+
     for i in range(len(vsTargets)):
      #br.sendTransform(bestGrasp)
      
@@ -1271,6 +1276,9 @@ def main():
       #Activate viewspace mask to be considered when the hemisphere is moved 
       print("Activar/Desactivar digitos de la Mascara")
       #vsMask[i]=0
+
+
+    # <-------------------------- End Loop -----------------------------------
       
     print("Mask: ", vsMask)
     print(np.argwhere(vsMask == 0))
@@ -1476,7 +1484,7 @@ def main():
         mesh, densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(regPCD, depth=8)
     o3d.visualization.draw_geometries([mesh,origin],zoom=0.7,front=[ 0.0, 0.0, -1.0], lookat=[-8.947535058590317e-07, 3.6505334648302034e-05,0.00028049998945789412], up=[0.0, -1.0,0.0])
     mesh.compute_triangle_normals()
-    o3d.io.write_triangle_mesh("/home/josepatino/ros/noetic/system/src/franka_vp/src/Comparison/Poisson.stl", mesh)
+    o3d.io.write_triangle_mesh("/home/ivokosa/Desktop/3D_Mesh/tstmesh", mesh)
     
 
 
