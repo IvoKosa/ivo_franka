@@ -163,7 +163,7 @@ class ReconstructionSystem:
         rotM = R.from_quat(np.array([quat.x, quat.y, quat.z, quat.w])).as_matrix()
         HTM = np.hstack([rotM, p])
         HTM = np.vstack([HTM, np.array([[0, 0, 0, 1]])])
-        return HTM
+        return HTM  
 
     def getVSTF(self):
         tfBuffer = tf2_ros.Buffer()
@@ -182,7 +182,7 @@ class ReconstructionSystem:
         return T0_i
 
     def draw_registration_result(self, source, target, transformation, Tw_0):
-        object_size = [0.08,0.08,0.1]
+        object_size = [0.06,0.06,0.1]
         object_position = [0.649997, 0]
 
         # object_size = [0.1,0.1,0.1]
@@ -201,13 +201,19 @@ class ReconstructionSystem:
         cam_info = cam_info_msg.K
         
         di = o3d.geometry.Image( np.array(depthimg)/1000 )
-        ci = o3d.geometry.Image( ((np.array(color_img)[:, ::-1])) )
+
+        # tst = np.array(color_img)# [:, ::-1]
+        # ci = o3d.geometry.Image( tst )
+
+        ci = o3d.geometry.Image( ((np.array(color_img))) )
+
+        ci.flip_vertical()
 
         intrinsic = o3d.camera.PinholeCameraIntrinsic(cam_info_msg.width, cam_info_msg.height, cam_info[0], cam_info[4], cam_info[2], cam_info[5])
         rgbd = o3d.geometry.RGBDImage.create_from_color_and_depth(ci, di, convert_rgb_to_intensity=False)
         pcd = o3d.geometry.PointCloud.create_from_rgbd_image(rgbd, intrinsic)
 
-        ic, oc = self.RANSAC(pcd,0.000002,200,1000)#0.000005,200,1000
+        ic, oc = self.RANSAC(pcd, 0.000002, 200, 1000)#0.000005,200,1000
 
         if len(np.asarray(oc.points))>66200:
             ic2, oc2 = self.RANSAC(oc,0.000005,50,1000)#0.0000008,50,1000
@@ -263,7 +269,7 @@ class ReconstructionSystem:
             Tw_0 = self.pose2HTM( (tfBuffer1.lookup_transform('panda_link0', "tf_d0", rospy.Time(0), rospy.Duration(10.0))).transform )
 
             print("HERE::::::::::::::::::::::::::::::::::::::")
-            print(Tw_0)
+            # print(Tw_0)
 
             print("-------- Getting 3D Info --------")
             
@@ -302,3 +308,5 @@ if __name__ == '__main__':
 
     reconstruct = ReconstructionSystem()
     r = reconstruct.runner(view_nums)
+
+    o3d.io.write_point_cloud("cyl_pc.ply", r)
