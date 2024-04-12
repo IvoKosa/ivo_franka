@@ -46,7 +46,7 @@ class ReconstructionSystem:
 
     def getTFPose(self, view_poses):
 
-        # View Poses: a list of integers, representing 32 possible poses
+        # View Poses: a list of integers, representing 32 possible poses (0 - 31)
 
         vsVector =[]
 
@@ -77,8 +77,6 @@ class ReconstructionSystem:
         vsTargets.orientation.w = rec[3]
 
         move.go_to_pose_goal(vsTargets.position.x, vsTargets.position.y, vsTargets.position.z, vsTargets.orientation.x, vsTargets.orientation.y,vsTargets.orientation.z, vsTargets.orientation.w)
-
-        print("-------- Sleeping --------")
 
         rospy.sleep(0.5)
 
@@ -222,6 +220,8 @@ class ReconstructionSystem:
         final.orient_normals_towards_camera_location()
         final = final.voxel_down_sample(voxel_size=0.000005) #0.00001
         return final
+    
+    # -------------- -------------- Runner -------------- --------------
 
     def runner(self, view_poses):
         vsTargets = self.getTFPose(view_poses)
@@ -261,6 +261,11 @@ class ReconstructionSystem:
             tfBuffer1 = tf2_ros.Buffer()
             listener1 = tf2_ros.TransformListener(tfBuffer1)
             Tw_0 = self.pose2HTM( (tfBuffer1.lookup_transform('panda_link0', "tf_d0", rospy.Time(0), rospy.Duration(10.0))).transform )
+
+            print("HERE::::::::::::::::::::::::::::::::::::::")
+            print(Tw_0)
+
+            print("-------- Getting 3D Info --------")
             
             transformation = self.getVSTF()
             regPCD = self.draw_registration_result(currPCD, regPCD, transformation, Tw_0)
@@ -269,7 +274,7 @@ class ReconstructionSystem:
 
         origin = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.00001) 
         # regPCD = regPCD.voxel_down_sample(voxel_size=0.00001) 
-        o3d.io.write_point_cloud("/home/ivokosa/Desktop/3D_Mesh/pcdFinal.ply", regPCD)
+        o3d.io.write_point_cloud("/home/ivokosa/Desktop/3D_Mesh/pc_Final.ply", regPCD)
         regPCD = self.outlierRemoval(regPCD,1,"total")
         if self.visualisations:
             o3d.visualization.draw_geometries([regPCD,origin],point_show_normal=True,zoom=0.7,front=[ 0.0, 0.0, -1.0], lookat=[-8.947535058590317e-07, 3.6505334648302034e-05,0.00028049998945789412], up=[0.0, -1.0,0.0])
@@ -286,6 +291,8 @@ class ReconstructionSystem:
         # o3d.io.write_triangle_mesh("/home/ivokosa/Desktop/3D_Mesh/tstmesh.obj", mesh)
 
 # ------------------------- Main -------------------------
+
+# To Do: Reconstruction from Loaded Images 
         
 if __name__ == '__main__':
 
