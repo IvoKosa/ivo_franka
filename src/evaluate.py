@@ -22,6 +22,12 @@ class Evaluation:
     def hausdorff(self, pc1, pc2):
         return pcu.hausdorff_distance(pc1, pc2)
     
+    def earth_movers(self, pc1, pc2):
+        return pcu.earth_movers_distance(pc1, pc2)
+    
+    def chamfer(self, pc1, pc2):
+        return pcu.chamfer_distance(pc1, pc2)
+    
     def histogram_similarity(self, model1, model2):
 
         bins = [20, 20, 20]
@@ -32,6 +38,9 @@ class Evaluation:
         histogram2 /= np.sum(histogram2)
 
         return wasserstein_distance(histogram1.flatten(), histogram2.flatten())
+    
+    def min_boundingBox(self):
+        pass
 
     def visual_comparison(self, model1, model2):
 
@@ -45,18 +54,14 @@ class Evaluation:
 
 if __name__ == "__main__":
 
-    rospy.init_node("Evaluation", anonymous=True)
+    # rospy.init_node("Evaluation", anonymous=True)
 
-    view_nums1 = [16, 7, 8, 9, 13] # [7, 9, 21]  9 
-    view_nums2 = [7]
+    e = Evaluation()
 
-    reconstruct = ReconstructionSystem()
-    evaluate = Evaluation()
+    # pc = o3d.geometry.PointCloud()
+    pc = o3d.io.read_point_cloud("teapot_pc.ply")
+    msh = o3d.io.read_triangle_mesh("teapot_mesh.obj")
 
-    r1 = reconstruct.runner(view_nums1)
+    # mesh = e.pc2mesh(pc)
 
-    o3d.io.write_point_cloud("cyl.ply", r1)
-
-    # r2 = reconstruct.runner(view_nums2)
-
-    # evaluate.visual_comparison(m1, m2)
+    # e.visual_comparison(msh, msh)

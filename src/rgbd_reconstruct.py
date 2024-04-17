@@ -3,27 +3,30 @@
 # ROS Imports
 import rospy
 import tf2_ros
-import geometry_msgs.msg
 from cv_bridge import CvBridge
 from scipy.spatial.transform import Rotation as R
-from sensor_msgs.msg import Image, CameraInfo
 
 # General Imports
 import numpy as np
-import cv2
 import open3d as o3d
 import copy
-
-# Own Imports
-from franka_move import MoveGroupPyInterface
 
 class ReconstructionSystem:
 
     def __init__(self, vis=False):
+        # If visualisation is needed
+        self.visualisations = vis
 
         # Bridge to convert ROS image message to cv2 format
         self.bridge = CvBridge()
-        self.visualisations = vis
+
+        # Point Cloud variable which gets more detail added with each view point
+        self.regPCD = o3d.geometry.PointCloud()
+
+        #Topic Names
+        self.color_topic = "/camera/color/image_raw"
+        self.depth_topic = "/camera/aligned_depth_to_color/image_raw"
+        self.cam_topic = "/camera/aligned_depth_to_color/camera_info"
 
     # ------------------------- Callback functions -------------------------
 
@@ -33,54 +36,7 @@ class ReconstructionSystem:
     def depth_callback(self, msg):
         return self.bridge.imgmsg_to_cv2(msg, "32FC1")
 
-    # ------------------------- Getting Poses -------------------------
-
-    # Rectification to align camera x axis with targets z axis
-    def rectification(self, x, y, z, w): 
-
-        r = R.from_quat([x, y, z, w])
-        ry = R.from_rotvec(np.pi/2 * np.array([0, 1, 0]))
-        rz = R.from_rotvec(np.pi * np.array([0, 0, 1]))
-        Rtot = r*ry*rz
-        return Rtot.as_quat()
-
-    def getTFPose(self, view_poses):
-
-        # View Poses: a list of integers, representing 32 possible poses (0 - 31)
-
-        vsVector =[]
-
-        tfBuffer = tf2_ros.Buffer()
-        listener = tf2_ros.TransformListener(tfBuffer)
-        target_pose = geometry_msgs.msg.TransformStamped()
-
-        for i in view_poses:
-            frame = 'tf_d'+str(i)
-            transformStamped = tfBuffer.lookup_transform('panda_link0', frame, rospy.Time(0), rospy.Duration(10.0))
-            target_pose = geometry_msgs.msg.Pose()
-            
-            target_pose.position.x = transformStamped.transform.translation.x
-            target_pose.position.y = transformStamped.transform.translation.y
-            target_pose.position.z = transformStamped.transform.translation.z
-            target_pose.orientation = transformStamped.transform.rotation
-            vsVector.append(target_pose)
-
-            print("Saving: ", str(i))
-        return vsVector  
-
-    def move_to_coords(self, vsTargets, move):
-
-        rec = self.rectification(vsTargets.orientation.x, vsTargets.orientation.y, vsTargets.orientation.z, vsTargets.orientation.w)
-        vsTargets.orientation.x = rec[0]
-        vsTargets.orientation.y = rec[1]
-        vsTargets.orientation.z = rec[2]
-        vsTargets.orientation.w = rec[3]
-
-        move.go_to_pose_goal(vsTargets.position.x, vsTargets.position.y, vsTargets.position.z, vsTargets.orientation.x, vsTargets.orientation.y,vsTargets.orientation.z, vsTargets.orientation.w)
-
-        rospy.sleep(0.5)
-
-    # ------------------------- 3D Stuff -------------------------
+    # ------------------------- 3D Calculations -------------------------
 
     def outlierRemoval(self, pcd, securityFactor, mode):
         points = np.asarray(pcd.points)
@@ -182,10 +138,10 @@ class ReconstructionSystem:
         return T0_i
 
     def draw_registration_result(self, source, target, transformation, Tw_0):
-        object_size = [0.15,0.15,0.1]
-        # object_position = [0.649997, 0]
+        object_size = [0.06,0.06,0.1]
+        # object_position = [0.649997, 0] 
 
-        # Teapot
+        # teapot [0.650443, 0]
         object_position = [0.650443, 0]
 
         # object_size = [0.1,0.1,0.1]
@@ -204,10 +160,6 @@ class ReconstructionSystem:
         cam_info = cam_info_msg.K
         
         di = o3d.geometry.Image( np.array(depthimg)/1000 )
-
-        # tst = np.array(color_img)# [:, ::-1]
-        # ci = o3d.geometry.Image( tst )
-
         ci = o3d.geometry.Image( ((np.array(color_img))) )
 
         ci.flip_vertical()
@@ -229,88 +181,14 @@ class ReconstructionSystem:
         final.orient_normals_towards_camera_location()
         final = final.voxel_down_sample(voxel_size=0.000005) #0.00001
         return final
-    
-    # -------------- -------------- Runner -------------- --------------
 
-    def runner(self, view_poses):
-        vsTargets = self.getTFPose(view_poses)
-
-        print(vsTargets)
-
-        move = MoveGroupPyInterface()
-        move.addCollisionObjects()
-
-        regPCD = o3d.geometry.PointCloud()
-
-        for i in range(len(vsTargets)):
-            print("-------------- Moving pos", str(i), " --------------")
-
-            self.move_to_coords(vsTargets[i], move)
-
-            color_topic = "/camera/color/image_raw"
-            depth_topic = "/camera/aligned_depth_to_color/image_raw"
-            cam_topic = "/camera/aligned_depth_to_color/camera_info"
-
-            colorImage = rospy.wait_for_message(color_topic, Image, timeout=20)
-            depthImage = rospy.wait_for_message(depth_topic, Image, timeout=20)
-            camInfo = rospy.wait_for_message(cam_topic, CameraInfo, timeout=20)
-
-            colour_img = self.color_callback(colorImage)
-            depth_img = self.depth_callback(depthImage)
-            currPCD = self.cam_info_callback(colour_img, depth_img, camInfo)
-
-            colour_name = "/home/ivokosa/Desktop/3D_Mesh/colour_" + str(i) + ".png"
-            depth_name = "/home/ivokosa/Desktop/3D_Mesh/depth_" + str(i) + ".png"
-
-            cv2.imwrite(colour_name, colour_img)
-            cv2.imwrite(depth_name, depth_img)
-
-            # -------------- -------------- -------------- --------------
-
-            tfBuffer1 = tf2_ros.Buffer()
-            listener1 = tf2_ros.TransformListener(tfBuffer1)
-            Tw_0 = self.pose2HTM( (tfBuffer1.lookup_transform('panda_link0', "tf_d0", rospy.Time(0), rospy.Duration(10.0))).transform )
-
-            print("-------- Getting 3D Info --------")
-            
-            transformation = self.getVSTF()
-            regPCD = self.draw_registration_result(currPCD, regPCD, transformation, Tw_0)
-        
-        print("-------------- Finished Loop --------------")
-
-        origin = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.00001) 
-        # regPCD = regPCD.voxel_down_sample(voxel_size=0.00001) 
-        regPCD = self.outlierRemoval(regPCD,1,"total")
-        o3d.io.write_point_cloud("/home/ivokosa/Desktop/3D_Mesh/teapot_pc.ply", regPCD)
-        if self.visualisations:
-            o3d.visualization.draw_geometries([regPCD,origin],point_show_normal=True,zoom=0.7,front=[ 0.0, 0.0, -1.0], lookat=[-8.947535058590317e-07, 3.6505334648302034e-05,0.00028049998945789412], up=[0.0, -1.0,0.0])
-        
-        # Poisson Algorithm
-        print("Poisson Algorithm")
-        mesh, _ = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(regPCD, depth=8)
-        if self.visualisations:
-            o3d.visualization.draw_geometries([mesh,origin],zoom=0.7,front=[ 0.0, 0.0, -1.0], lookat=[-8.947535058590317e-07, 3.6505334648302034e-05,0.00028049998945789412], up=[0.0, -1.0,0.0])
-        mesh.compute_triangle_normals()
-
-        o3d.io.write_triangle_mesh("/home/ivokosa/Desktop/3D_Mesh/teapot_mesh.obj", mesh)
-
-        return regPCD
-
-        # o3d.io.write_triangle_mesh("/home/ivokosa/Desktop/3D_Mesh/tstmesh.obj", mesh)
-
-# ------------------------- Main -------------------------
-
-# To Do: Reconstruction from Loaded Images 
-        
 if __name__ == '__main__':
 
     rospy.init_node("Reconstruction_System", anonymous=True)
 
-    view_nums = [5, 13, 19]
-    # [7, 9, 21] 
-    # [16, 7, 8, 9, 13]
+    view_nums = [7, 9, 21]
 
-    reconstruct = ReconstructionSystem(True)
+    reconstruct = ReconstructionSystem()
     r = reconstruct.runner(view_nums)
 
-    # o3d.io.write_point_cloud("teapot.ply", r)
+    o3d.io.write_point_cloud("teapot.ply", r)

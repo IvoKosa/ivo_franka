@@ -2,10 +2,12 @@
 
 import sys
 import rospy
+import tf2_ros
+import numpy as np
 import moveit_commander
 import moveit_msgs.msg
 import geometry_msgs.msg
-import copy
+from scipy.spatial.transform import Rotation as R
 
 class MoveGroupPyInterface(object):
     """MoveGroupPyInterface"""
@@ -91,12 +93,7 @@ class MoveGroupPyInterface(object):
 
         current_pose = self.move_group.get_current_pose(end_effector_link = "camera_link").pose
         return [plan[0], success]#all_close(pose_goal, current_pose, 0.01)
-
-    def execute_plan(self, plan):
-
-        move_group = self.move_group
-        move_group.execute(plan, wait=True)
-
+    
     def addCollisionObjects(self):
         scene = self.scene
         
@@ -128,29 +125,51 @@ class MoveGroupPyInterface(object):
         #cylpose.pose.orientation.w = 1#0.35097694
         scene.add_box("unit_cylinder", cylpose,size = (0.08, 0.08, 0.1))
 
-    def plan_cartesian_path(self, scale=1):
-        move_group = self.move_group
-        waypoints = []
+    # ------------------------- Getting Poses -------------------------
 
-        wpose = move_group.get_current_pose().pose
-        wpose.position.z -= scale * 0.1  # First move up (z)
-        wpose.position.y += scale * 0.2  # and sideways (y)
-        waypoints.append(copy.deepcopy(wpose))
+    def rectification(self, x, y, z, w): 
 
-        wpose.position.x += scale * 0.1  # Second move forward/backwards in (x)
-        waypoints.append(copy.deepcopy(wpose))
+        r = R.from_quat([x, y, z, w])
+        ry = R.from_rotvec(np.pi/2 * np.array([0, 1, 0]))
+        rz = R.from_rotvec(np.pi * np.array([0, 0, 1]))
+        Rtot = r*ry*rz
+        return Rtot.as_quat()
 
-        wpose.position.y -= scale * 0.1  # Third move sideways (y)
-        waypoints.append(copy.deepcopy(wpose))
+    def getTFPose(self, view_poses):
 
-        (plan, fraction) = move_group.compute_cartesian_path(
-                                        waypoints,   # waypoints to follow
-                                        0.01,        # eef_step
-                                        0.0)         # jump_threshold
-        
-        return plan
+        # View Poses: a list of integers, representing 32 possible poses (0 - 31) e.g [7, 9, 21]
 
-def main():
+        vsVector =[]
+
+        tfBuffer = tf2_ros.Buffer()
+        listener = tf2_ros.TransformListener(tfBuffer)
+        target_pose = geometry_msgs.msg.TransformStamped()
+
+        for i in view_poses:
+            frame = 'tf_d'+str(i)
+            transformStamped = tfBuffer.lookup_transform('panda_link0', frame, rospy.Time(0), rospy.Duration(10.0))
+            target_pose = geometry_msgs.msg.Pose()
+            
+            target_pose.position.x = transformStamped.transform.translation.x
+            target_pose.position.y = transformStamped.transform.translation.y
+            target_pose.position.z = transformStamped.transform.translation.z
+            target_pose.orientation = transformStamped.transform.rotation
+            vsVector.append(target_pose)
+
+            print("Saving: ", str(i))
+        return vsVector  
+
+    def move_to_coords(self, vsTargets):
+
+        rec = self.rectification(vsTargets.orientation.x, vsTargets.orientation.y, vsTargets.orientation.z, vsTargets.orientation.w)
+        vsTargets.orientation.x = rec[0]
+        vsTargets.orientation.y = rec[1]
+        vsTargets.orientation.z = rec[2]
+        vsTargets.orientation.w = rec[3]
+
+        self.go_to_pose_goal(vsTargets.position.x, vsTargets.position.y, vsTargets.position.z, vsTargets.orientation.x, vsTargets.orientation.y,vsTargets.orientation.z, vsTargets.orientation.w)
+
+if __name__ == '__main__':
 
     rospy.init_node("move_group_python_interface", anonymous=True)
 
@@ -159,9 +178,5 @@ def main():
 
     move.go_to_pose_goal(0.35745, 0.028111, 0.532,  -0.00066075, 0.71554, -0.0004089, 0.698572)
 
-    cartesian_plan = move.plan_cartesian_path()
-    
-    move.execute_plan(cartesian_plan)
-
-if __name__ == '__main__':
-    main()
+    # cartesian_plan = move.plan_cartesian_path()
+    # move.execute_plan(cartesian_plan)

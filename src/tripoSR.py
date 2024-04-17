@@ -1,4 +1,3 @@
-import argparse
 import logging
 import os
 import time
@@ -11,7 +10,6 @@ import open3d as o3d
 
 from tsr.system import TSR
 from tsr.utils import remove_background, resize_foreground, save_video
-
 
 class Timer:
     def __init__(self):
@@ -110,7 +108,6 @@ class LRM_Reconstruction:
             o3d_mesh.triangles = o3d.utility.Vector3iVector(final_obj.faces)
             timer.end("Exporting mesh")
             return o3d_mesh
-
 
 if __name__ == "__main__":
 
