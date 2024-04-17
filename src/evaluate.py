@@ -39,7 +39,10 @@ class Evaluation:
     def min_boundingBox(self):
         pass
 
-    def visual_comparison(self, model1, model2):
+    def visual_comparison(self, pc_1, pc_2):
+
+        model1 = pv.PolyData(pc_1)
+        model2 = pv.PolyData(pc_2)
 
         p = pv.Plotter(shape=(1, 2))
         p.add_mesh(model1)
@@ -55,9 +58,27 @@ if __name__ == "__main__":
 
     e = Evaluation()
 
-    # pc = o3d.geometry.PointCloud()
-    pc = o3d.io.read_point_cloud("teapot_pc.ply")
-    msh = o3d.io.read_triangle_mesh("teapot_mesh.obj")
+    # Note for tomorrow ivo: o3d.geometry.triange_mesh.get_min_bound()
+
+    # pc = o3d.io.read_point_cloud("teapot_pc.ply")
+    rgbd = o3d.io.read_triangle_mesh("models/mesh_2.obj")
+    nn = o3d.io.read_triangle_mesh("models/tripoMesh_0.obj")
+    gt = o3d.io.read_triangle_mesh("models/teapot.obj")
+
+    print("RGBD", rgbd.get_min_bound())
+    print("nn", nn.get_min_bound())
+
+    pc_rgbd = rgbd.sample_points_uniformly(number_of_points=500)
+    pc_nn = nn.sample_points_uniformly(number_of_points=500)
+    pc_gt = gt.sample_points_uniformly(number_of_points=500)
+
+    pc_rgbd = np.asarray(pc_rgbd.points)
+    pc_nn = np.asarray(pc_nn.points)
+    pc_gt = np.asarray(pc_gt.points)
+
+    # print(e.hausdorff(pc_rgbd, pc_nn))
+
+    e.visual_comparison(pc_rgbd, pc_nn)
 
     # mesh = e.pc2mesh(pc)
 
