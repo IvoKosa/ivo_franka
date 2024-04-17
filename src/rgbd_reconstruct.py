@@ -138,7 +138,7 @@ class ReconstructionSystem:
         return T0_i
 
     def draw_registration_result(self, source, target, transformation, Tw_0):
-        object_size = [0.06,0.06,0.1]
+        object_size = [0.15,0.15,0.1]
         # object_position = [0.649997, 0] 
 
         # teapot [0.650443, 0]

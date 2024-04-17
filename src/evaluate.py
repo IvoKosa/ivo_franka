@@ -11,9 +11,6 @@ import numpy as np
 import trimesh as tr
 from scipy.stats import wasserstein_distance
 
-# Own Imports
-from reconstruction import ReconstructionSystem
-
 class Evaluation:
 
     def __init__(self) -> None:
