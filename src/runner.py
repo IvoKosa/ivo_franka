@@ -43,7 +43,7 @@ os.makedirs(os.path.join(new_dir, "meshes"))
 move = MoveGroupPyInterface()
 move.addCollisionObjects()
 
-RGBD_r = ReconstructionSystem()
+RGBD_r = ReconstructionSystem(True)
 Tripo_r = LRM_Reconstruction()
 
 pose_list = [7, 9, 21]
@@ -69,8 +69,11 @@ for i in range(len(poses)):
     cv2.imwrite(colour_name, colour_img)
     cv2.imwrite(depth_name, depth_img)
 
+    # If using Tripo:
+    # tripo_mesh_name = new_dir + "/meshes/tripoMesh_" + str(i) + ".obj"
     # tripo_mesh = o3d.geometry.TriangleMesh()
     # tripo_mesh = Tripo_r.runner([colour_name])
+    # o3d.io.write_triangle_mesh(tripo_mesh_name, tripo_mesh)
 
     # ------------- ------------- Generating Point Cloud ------------- -------------
 

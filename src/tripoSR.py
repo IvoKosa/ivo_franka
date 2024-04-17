@@ -40,7 +40,7 @@ class LRM_Reconstruction:
         self.not_remove_bg = not_remove_bg
         self.render = render
 
-    def runner(self, img_lst):
+    def runner(self, img_lst, out_dir):
         
         timer = Timer()
 
@@ -106,16 +106,32 @@ class LRM_Reconstruction:
             o3d_mesh = o3d.geometry.TriangleMesh()
             o3d_mesh.vertices = o3d.utility.Vector3dVector(final_obj.vertices)
             o3d_mesh.triangles = o3d.utility.Vector3iVector(final_obj.faces)
+
+            mesh_name = out_dir + "meshes/tripoMesh_" + str(i) + ".obj"
+            o3d.io.write_triangle_mesh(mesh_name, o3d_mesh)
+
             timer.end("Exporting mesh")
-            return o3d_mesh
+            # return o3d_mesh
 
 if __name__ == "__main__":
 
-    files = ['examples/mug1.jpg', 'examples/mug2.jpg', 'examples/mug3.jpg']
-    mug = ['src/mug1.jpg']
+    output_dir = "/home/ivokosa/Desktop/Reconst_Output/"
+    run_number = 2
+    path_suffix = str(run_number) + "/images/"
+
+    path_str = os.path.join(output_dir, path_suffix)
+
+    files = os.listdir(path_str)
+    filtered_files = [file for file in files if file.startswith("colour_")]
+
+    filtered_files.sort()
+
+    file_list = [os.path.join(path_str, i) for i in filtered_files]
 
     run = LRM_Reconstruction()
 
     mesh = o3d.geometry.TriangleMesh()
 
-    mesh = run.runner(mug)
+    out_dir = output_dir + str(run_number) + "/"
+
+    mesh = run.runner(file_list, out_dir)
