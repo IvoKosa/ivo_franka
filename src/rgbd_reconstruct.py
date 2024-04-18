@@ -13,7 +13,12 @@ import copy
 
 class ReconstructionSystem:
 
-    def __init__(self, vis=False):
+    def __init__(self, object_size=[0.08,0.08,0.1], object_pos=[0.649997, 0] , vis=False,):
+
+        # Object size and position
+        self.object_size = object_size
+        self.object_position = object_pos
+
         # If visualisation is needed
         self.visualisations = vis
 
@@ -138,11 +143,10 @@ class ReconstructionSystem:
         return T0_i
 
     def draw_registration_result(self, source, target, transformation, Tw_0):
-        object_size = [0.13,0.13,0.1]
+        # object_size = [0.13,0.13,0.1]
         # object_position = [0.649997, 0] 
 
-        # teapot [0.650443, 0]
-        object_position = [0.650443, 0]
+        # object_position = [0.650443, 0]
 
         # object_size = [0.1,0.1,0.1]
         # object_position = [0.705265, 0.002895]
@@ -152,8 +156,8 @@ class ReconstructionSystem:
         source_temp.transform(transformation)
         pcdFin = source_temp + target_temp
         Tw_0cop =copy.deepcopy(Tw_0)
-        ocz = (object_size[2]/2)#(0.725+(object_size[2]/2)) - ((0.725+(object_size[2]/2))-(object_size[2]/2)) #object center in z
-        pcdFin = self.removeOutBBX(pcdFin, np.array([object_position[0], object_position[1], ocz]), np.array([object_size[0],object_size[1],object_size[2]]), Tw_0cop)
+        ocz = (self.object_size[2]/2)#(0.725+(object_size[2]/2)) - ((0.725+(object_size[2]/2))-(object_size[2]/2)) #object center in z
+        pcdFin = self.removeOutBBX(pcdFin, np.array([self.object_position[0], self.object_position[1], ocz]), np.array([self.object_size[0], self.object_size[1], self.object_size[2]]), Tw_0cop)
         return pcdFin    
 
     def cam_info_callback(self, color_img, depthimg, cam_info_msg):
@@ -187,8 +191,7 @@ if __name__ == '__main__':
     rospy.init_node("Reconstruction_System", anonymous=True)
 
     view_nums = [7, 9, 21]
+    teapot_object_size = [0.13,0.13,0.1]
+    teapot_object_position = [0.650443, 0]
 
-    reconstruct = ReconstructionSystem()
-    r = reconstruct.runner(view_nums)
-
-    o3d.io.write_point_cloud("teapot.ply", r)
+    # reconstruct = ReconstructionSystem(teapot_object_size, teapot_object_position)

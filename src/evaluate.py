@@ -35,9 +35,6 @@ class Evaluation:
         histogram2 /= np.sum(histogram2)
 
         return wasserstein_distance(histogram1.flatten(), histogram2.flatten())
-    
-    def min_boundingBox(self):
-        pass
 
     def visual_comparison(self, pc_1, pc_2):
 

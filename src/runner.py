@@ -43,7 +43,10 @@ os.makedirs(os.path.join(new_dir, "meshes"))
 move = MoveGroupPyInterface()
 move.addCollisionObjects()
 
-RGBD_r = ReconstructionSystem(True)
+teapot_object_size = [0.12,0.12,0.1]
+teapot_object_position = [0.650443, 0]
+
+RGBD_r = ReconstructionSystem(teapot_object_size, teapot_object_position, True)
 Tripo_r = LRM_Reconstruction()
 
 pose_list = [7, 9, 21]
@@ -86,7 +89,7 @@ for i in range(len(poses)):
 
     # ------------- ------------- Saving Point Cloud ------------- -------------
 
-    pc_name = new_dir + "/point_clouds/pc_" + str(i) + ".ply"
+    pc_name = new_dir + "/point_clouds/rgdbPc_" + str(i) + ".ply"
     o3d.io.write_point_cloud(pc_name, RGBD_r.regPCD)
 
     # ------------- ------------- Generating Mesh from Point Cloud ------------- -------------
@@ -100,7 +103,7 @@ for i in range(len(poses)):
 
     # ------------- ------------- Saving Mesh ------------- -------------
 
-    mesh_name = new_dir + "/meshes/mesh_" + str(i) + ".obj"
+    mesh_name = new_dir + "/meshes/rgbdMesh_" + str(i) + ".obj"
     o3d.io.write_triangle_mesh(mesh_name, mesh)
 
 # ------------- ------------- End Loop ------------- -------------
@@ -108,11 +111,11 @@ for i in range(len(poses)):
 origin = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.00001) 
 RGBD_r.regPCD = RGBD_r.outlierRemoval(RGBD_r.regPCD,1,"total")
 
-pc_name = new_dir + "/point_clouds/pc_final" + ".ply"
+pc_name = new_dir + "/point_clouds/rgdbPc_final" + ".ply"
 o3d.io.write_point_cloud(pc_name, RGBD_r.regPCD)
 
 mesh, _ = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(RGBD_r.regPCD, depth=8)
-mesh_name = new_dir + "/meshes/mesh_final" + ".obj"
+mesh_name = new_dir + "/meshes/rgbdMesh_final" + ".obj"
 o3d.io.write_triangle_mesh(mesh_name, mesh)
 
 if RGBD_r.visualisations:

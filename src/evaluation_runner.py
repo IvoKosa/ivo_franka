@@ -97,13 +97,13 @@ for i, file in enumerate(pc_files):
     np_rgbd_pc = np.asarray(rgbd_pc.points)
     np_tripo_pc = np.asarray(tripo_pc.points)
 
-    comparison_metrics["Chamfer Distance"] = {
+    comparison_metrics["Chamfer Distance     "] = {
         "GT - RGBD": pcu.chamfer_distance(np_gt_pc, np_rgbd_pc),
         "GT - TripoSR": pcu.chamfer_distance(np_gt_pc, np_tripo_pc),
         "RGBD - TripoSR": pcu.chamfer_distance(np_rgbd_pc, np_tripo_pc)
     }
 
-    comparison_metrics["Hausdorff Distance"] = {
+    comparison_metrics["Hausdorff Distance   "] = {
         "GT - RGBD": pcu.hausdorff_distance(np_gt_pc, np_rgbd_pc),
         "GT - TripoSR": pcu.hausdorff_distance(np_gt_pc, np_tripo_pc),
         "RGBD - TripoSR": pcu.hausdorff_distance(np_rgbd_pc, np_tripo_pc)
