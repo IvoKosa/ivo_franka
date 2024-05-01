@@ -83,7 +83,8 @@ class ReconstructionSystem:
     def removeOutBBX(self, pcd, center, size, transformation):
         center = center/1000
         size = size/1000
-        center[2] = center[2] - (center[2] - size[2]/2)
+        # center[2] = (center[2] - (center[2] - size[2]/2))
+        # center[2] = center[2] 
         center2 = center
         center2 = np.vstack([center2[np.newaxis].T,[1]])
         upBounds = center + size/2
@@ -143,20 +144,13 @@ class ReconstructionSystem:
         return T0_i
 
     def draw_registration_result(self, source, target, transformation, Tw_0):
-        # object_size = [0.13,0.13,0.1]
-        # object_position = [0.649997, 0] 
-
-        # object_position = [0.650443, 0]
-
-        # object_size = [0.1,0.1,0.1]
-        # object_position = [0.705265, 0.002895]
-
+        
         source_temp = copy.deepcopy(source)
         target_temp = copy.deepcopy(target)
         source_temp.transform(transformation)
         pcdFin = source_temp + target_temp
         Tw_0cop =copy.deepcopy(Tw_0)
-        ocz = (self.object_size[2]/2)#(0.725+(object_size[2]/2)) - ((0.725+(object_size[2]/2))-(object_size[2]/2)) #object center in z
+        ocz = (self.object_size[2]/2) + 0.015 #(0.725+(object_size[2]/2)) - ((0.725+(object_size[2]/2))-(object_size[2]/2)) #object center in z
         pcdFin = self.removeOutBBX(pcdFin, np.array([self.object_position[0], self.object_position[1], ocz]), np.array([self.object_size[0], self.object_size[1], self.object_size[2]]), Tw_0cop)
         return pcdFin    
 

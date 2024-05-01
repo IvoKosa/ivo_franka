@@ -77,7 +77,7 @@ class MoveGroupPyInterface(object):
         pose_goal.position.y = y #0.1
         pose_goal.position.z = z #1.4
         
-        move_group.set_pose_reference_frame("panda_link0")
+        move_group.set_pose_reference_frame("panda_link0")  
         move_group.set_pose_target(pose_goal,"camera_link")
 
         plan = move_group.plan()
@@ -135,7 +135,7 @@ class MoveGroupPyInterface(object):
         Rtot = r*ry*rz
         return Rtot.as_quat()
 
-    def getTFPose(self, view_poses):
+    def getTFPose(self, view_poses=[i for i in range(32)]):
 
         # View Poses: a list of integers, representing 32 possible poses (0 - 31) e.g [7, 9, 21]
 
@@ -167,7 +167,10 @@ class MoveGroupPyInterface(object):
         vsTargets.orientation.z = rec[2]
         vsTargets.orientation.w = rec[3]
 
-        self.go_to_pose_goal(vsTargets.position.x, vsTargets.position.y, vsTargets.position.z, vsTargets.orientation.x, vsTargets.orientation.y,vsTargets.orientation.z, vsTargets.orientation.w)
+        succcess = self.go_to_pose_goal(vsTargets.position.x, vsTargets.position.y, vsTargets.position.z, 
+                             vsTargets.orientation.x, vsTargets.orientation.y,vsTargets.orientation.z, vsTargets.orientation.w)
+        
+        return succcess
 
 if __name__ == '__main__':
 

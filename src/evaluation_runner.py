@@ -10,7 +10,7 @@ import point_cloud_utils as pcu
 comparison_metrics = {"Image Number": 0}
 
 output_dir = "/home/ivokosa/Desktop/Reconst_Output/"
-run_number = 4
+run_number = 6
 
 full_dir = os.path.join(output_dir, str(run_number))
 new_dir = full_dir + "/metrics/"
@@ -22,15 +22,16 @@ new_dir = full_dir + "/metrics/"
 gt_obj = o3d.io.read_triangle_mesh("/home/ivokosa/model_editor_models/utah_teapot/teapot.obj")
 gt_pc = gt_obj.sample_points_uniformly(number_of_points=500)
 
+# ------------- ------------- Ground Truth Scaling ------------- -------------
+
 gb = gt_obj.get_minimal_oriented_bounding_box()
 gn = np.asarray(gb.get_max_bound() - gb.get_min_bound())
-
-pc_dir = os.path.join(full_dir, "point_clouds/")
-mesh_dir = os.path.join(full_dir, "meshes/")
 comparison_metrics["GT Scaler"] = 1 / gn[0]
 gt_pc.scale(comparison_metrics["GT Scaler"], center=gt_pc.get_center())
 gt_obj.scale(comparison_metrics["GT Scaler"], center=gt_obj.get_center())
 
+pc_dir = os.path.join(full_dir, "point_clouds/")
+mesh_dir = os.path.join(full_dir, "meshes/")
 pc_files = os.listdir(pc_dir)
 pc_files.sort()
 
@@ -41,10 +42,10 @@ for i, file in enumerate(pc_files):
     # Files for comparison:
     #   gt_obj
     #   gt_pc
-    #   rgbd_mesh
-    #   tripo_mesh
     #   rgbd_pc
+    #   rgbd_mesh
     #   tripo_pc
+    #   tripo_mesh
 
     # ------------- ------------- Loading Files ------------- -------------
 
@@ -70,7 +71,6 @@ for i, file in enumerate(pc_files):
     tripo_pc = tripo_mesh.sample_points_uniformly(number_of_points=500)
 
     # ------------- ------------- Scaling Objects Uniformly ------------- -------------
-
     
     rb = rgbd_mesh.get_minimal_oriented_bounding_box()
     tb = tripo_mesh.get_minimal_oriented_bounding_box()
@@ -98,14 +98,14 @@ for i, file in enumerate(pc_files):
     np_tripo_pc = np.asarray(tripo_pc.points)
 
     comparison_metrics["Chamfer Distance     "] = {
-        "GT - RGBD": pcu.chamfer_distance(np_gt_pc, np_rgbd_pc),
-        "GT - TripoSR": pcu.chamfer_distance(np_gt_pc, np_tripo_pc),
+        "GT - RGBD     ": pcu.chamfer_distance(np_gt_pc, np_rgbd_pc),
+        "GT - TripoSR  ": pcu.chamfer_distance(np_gt_pc, np_tripo_pc),
         "RGBD - TripoSR": pcu.chamfer_distance(np_rgbd_pc, np_tripo_pc)
     }
 
     comparison_metrics["Hausdorff Distance   "] = {
-        "GT - RGBD": pcu.hausdorff_distance(np_gt_pc, np_rgbd_pc),
-        "GT - TripoSR": pcu.hausdorff_distance(np_gt_pc, np_tripo_pc),
+        "GT - RGBD     ": pcu.hausdorff_distance(np_gt_pc, np_rgbd_pc),
+        "GT - TripoSR  ": pcu.hausdorff_distance(np_gt_pc, np_tripo_pc),
         "RGBD - TripoSR": pcu.hausdorff_distance(np_rgbd_pc, np_tripo_pc)
     }
 
@@ -114,8 +114,8 @@ for i, file in enumerate(pc_files):
     emd3, _ = pcu.earth_movers_distance(np_rgbd_pc, np_tripo_pc)
 
     comparison_metrics["Earth Movers Distance"] = {
-        "GT - RGBD": emd1,
-        "GT - TripoSR": emd2,
+        "GT - RGBD     ": emd1,
+        "GT - TripoSR  ": emd2,
         "RGBD - TripoSR": emd3
     }
 

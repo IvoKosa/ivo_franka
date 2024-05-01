@@ -3,6 +3,7 @@
 # General Imports
 import cv2
 import os
+import numpy as np
 import open3d as o3d
 
 # ROS Imports 
@@ -43,18 +44,24 @@ os.makedirs(os.path.join(new_dir, "meshes"))
 move = MoveGroupPyInterface()
 move.addCollisionObjects()
 
-teapot_object_size = [0.12,0.12,0.1]
-teapot_object_position = [0.650443, 0]
+teapot_object_size = [0.14,0.14,0.1]
+teapot_object_position = [0.650221, 0]
 
-RGBD_r = ReconstructionSystem(teapot_object_size, teapot_object_position, True)
-Tripo_r = LRM_Reconstruction()
+# teapot_object_size = [0.08,0.08,0.08]
+# teapot_object_position = [0.649997, 0]
+
+RGBD_r = ReconstructionSystem(teapot_object_size, teapot_object_position)
+# Tripo_r = LRM_Reconstruction()
 
 pose_list = [7, 9, 21]
-poses = move.getTFPose(pose_list)
+poses = move.getTFPose()
 
 for i in range(len(poses)):
 
-    move.move_to_coords(poses[i])
+    success = move.move_to_coords(poses[i])
+
+    if success[1] == False:
+        continue
 
     # ------------- ------------- Getting Image Info ------------- -------------
 
@@ -95,7 +102,10 @@ for i in range(len(poses)):
     # ------------- ------------- Generating Mesh from Point Cloud ------------- -------------
 
     origin = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.00001) 
-    mesh, _ = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(RGBD_r.regPCD, depth=8)
+    mesh, densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(RGBD_r.regPCD, depth=8)
+
+    vertices_to_remove = densities < np.quantile(densities, 0.01)
+    mesh.remove_vertices_by_mask(vertices_to_remove)
 
     if RGBD_r.visualisations:
         o3d.visualization.draw_geometries([mesh,origin],zoom=0.7,front=[ 0.0, 0.0, -1.0], lookat=[-8.947535058590317e-07, 3.6505334648302034e-05,0.00028049998945789412], up=[0.0, -1.0,0.0])
@@ -114,10 +124,11 @@ RGBD_r.regPCD = RGBD_r.outlierRemoval(RGBD_r.regPCD,1,"total")
 pc_name = new_dir + "/point_clouds/rgdbPc_final" + ".ply"
 o3d.io.write_point_cloud(pc_name, RGBD_r.regPCD)
 
-mesh, _ = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(RGBD_r.regPCD, depth=8)
+mesh, densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(RGBD_r.regPCD, depth=8)
+vertices_to_remove = densities < np.quantile(densities, 0.01)
+mesh.remove_vertices_by_mask(vertices_to_remove)
 mesh_name = new_dir + "/meshes/rgbdMesh_final" + ".obj"
 o3d.io.write_triangle_mesh(mesh_name, mesh)
 
 if RGBD_r.visualisations:
     o3d.visualization.draw_geometries([RGBD_r.regPCD,origin],point_show_normal=True,zoom=0.7,front=[ 0.0, 0.0, -1.0], lookat=[-8.947535058590317e-07, 3.6505334648302034e-05,0.00028049998945789412], up=[0.0, -1.0,0.0])
-        
