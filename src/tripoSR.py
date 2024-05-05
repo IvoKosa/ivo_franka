@@ -115,9 +115,9 @@ class LRM_Reconstruction:
 
 if __name__ == "__main__":
 
-    output_dir = "/home/ivokosa/Desktop/Reconst_Output/"
-    run_number = 6
-    path_suffix = str(run_number) + "/images/"
+    output_dir = "/home/ivokosa/Desktop/Results/"
+    run_str = "Teapot_3_Views"
+    path_suffix = run_str + "/images/"
 
     path_str = os.path.join(output_dir, path_suffix)
 
@@ -132,6 +132,6 @@ if __name__ == "__main__":
 
     mesh = o3d.geometry.TriangleMesh()
 
-    out_dir = output_dir + str(run_number) + "/"
+    out_dir = output_dir + run_str + "/"
 
     mesh = run.runner(file_list, out_dir)

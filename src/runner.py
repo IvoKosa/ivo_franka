@@ -44,7 +44,7 @@ os.makedirs(os.path.join(new_dir, "meshes"))
 move = MoveGroupPyInterface()
 move.addCollisionObjects()
 
-teapot_object_size = [0.14,0.14,0.1]
+teapot_object_size = [0.14,0.14,0.14]
 teapot_object_position = [0.650221, 0]
 
 # teapot_object_size = [0.08,0.08,0.08]
@@ -79,11 +79,9 @@ for i in range(len(poses)):
     cv2.imwrite(colour_name, colour_img)
     cv2.imwrite(depth_name, depth_img)
 
-    # If using Tripo:
+    # Uncomment if using Tripo:
     # tripo_mesh_name = new_dir + "/meshes/tripoMesh_" + str(i) + ".obj"
-    # tripo_mesh = o3d.geometry.TriangleMesh()
-    # tripo_mesh = Tripo_r.runner([colour_name])
-    # o3d.io.write_triangle_mesh(tripo_mesh_name, tripo_mesh)
+    # Tripo_r.runner([colour_name], new_dir)
 
     # ------------- ------------- Generating Point Cloud ------------- -------------
 
