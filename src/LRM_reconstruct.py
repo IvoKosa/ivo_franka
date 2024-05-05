@@ -62,8 +62,6 @@ class LRM_Reconstruction:
 
         timer.start("Processing images")
 
-        images = []
-
         if not self.not_remove_bg:
             rembg_session = None
         else:
@@ -77,23 +75,22 @@ class LRM_Reconstruction:
             image = np.array(image).astype(np.float32) / 255.0
             image = image[:, :, :3] * image[:, :, 3:4] + (1 - image[:, :, 3:4]) * 0.5
             image = Image.fromarray((image * 255.0).astype(np.uint8))
-        images.append(image)
         timer.end("Processing images")
 
-        for i, image in enumerate(images):
-            logging.info(f"Running image {i + 1}/{len(images)} ...")
 
-            timer.start("Running model")
-            with torch.no_grad():
-                scene_codes = model([image], device=device)
-            timer.end("Running model")
+        logging.info(f"Running image...")
 
-            timer.start("Exporting mesh")
-            meshes = model.extract_mesh(scene_codes, resolution=256)
-            final_obj = meshes[0]
-            o3d_mesh = o3d.geometry.TriangleMesh()
-            o3d_mesh.vertices = o3d.utility.Vector3dVector(final_obj.vertices)
-            o3d_mesh.triangles = o3d.utility.Vector3iVector(final_obj.faces)
-            timer.end("Exporting mesh")
-            
-            return o3d_mesh
+        timer.start("Running model")
+        with torch.no_grad():
+            scene_codes = model([image], device=device)
+        timer.end("Running model")
+
+        timer.start("Exporting mesh")
+        meshes = model.extract_mesh(scene_codes, resolution=256)
+        final_obj = meshes[0]
+        o3d_mesh = o3d.geometry.TriangleMesh()
+        o3d_mesh.vertices = o3d.utility.Vector3dVector(final_obj.vertices)
+        o3d_mesh.triangles = o3d.utility.Vector3iVector(final_obj.faces)
+        timer.end("Exporting mesh")
+
+        return o3d_mesh

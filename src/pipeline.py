@@ -67,9 +67,9 @@ for i in range(len(poses)):
 
     # ------------- ------------- Getting Image Info ------------- -------------
 
-    colorImage = rospy.wait_for_message(RGBD_r.color_topic, Image, timeout=20)
-    depthImage = rospy.wait_for_message(RGBD_r.depth_topic, Image, timeout=20)
-    camInfo = rospy.wait_for_message(RGBD_r.cam_topic, CameraInfo, timeout=20)
+    colorImage = rospy.wait_for_message("/camera/color/image_raw", Image, timeout=20)
+    depthImage = rospy.wait_for_message("/camera/aligned_depth_to_color/image_raw", Image, timeout=20)
+    camInfo = rospy.wait_for_message("/camera/aligned_depth_to_color/camera_info", CameraInfo, timeout=20)
 
     colour_img = bridge.imgmsg_to_cv2(colorImage, "rgb8")
     depth_img = bridge.imgmsg_to_cv2(depthImage, "32FC1")
@@ -92,5 +92,7 @@ for i in range(len(poses)):
     
     # Uncomment if using Tripo:
     # tripo_mesh_name = new_dir + "/meshes/tripoMesh_" + str(i) + ".obj"
-    # Tripo_r.runner(colour_name)
+    # LRM_img = Tripo_r.runner(colour_name)
+    # LRM_mesh_name = new_dir + "/meshes/tripoMesh_" + str(i) + ".obj"
+    # o3d.io.write_triangle_mesh(LRM_mesh_name, RGBD_r.regMesh)
 
