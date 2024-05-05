@@ -11,7 +11,7 @@ import numpy as np
 import open3d as o3d
 import copy
 
-class ReconstructionSystem:
+class RGBD_Reconstruction:
 
     def __init__(self, object_size=[0.08,0.08,0.1], object_pos=[0.649997, 0] , vis=False,):
 
@@ -28,6 +28,9 @@ class ReconstructionSystem:
         # Point Cloud variable which gets more detail added with each view point
         self.regPCD = o3d.geometry.PointCloud()
 
+        # Mesh derived from point cloud
+        self.regMesh = o3d.geometry.TriangleMesh()
+
         #Topic Names
         self.color_topic = "/camera/color/image_raw"
         self.depth_topic = "/camera/aligned_depth_to_color/image_raw"
@@ -35,11 +38,11 @@ class ReconstructionSystem:
 
     # ------------------------- Callback functions -------------------------
 
-    def color_callback(self, msg):
-        return self.bridge.imgmsg_to_cv2(msg, "rgb8")
+    # def color_callback(self, msg):
+    #     return self.bridge.imgmsg_to_cv2(msg, "rgb8")
 
-    def depth_callback(self, msg):
-        return self.bridge.imgmsg_to_cv2(msg, "32FC1")
+    # def depth_callback(self, msg):
+    #     return self.bridge.imgmsg_to_cv2(msg, "32FC1")
 
     # ------------------------- 3D Calculations -------------------------
 
@@ -179,6 +182,38 @@ class ReconstructionSystem:
         final.orient_normals_towards_camera_location()
         final = final.voxel_down_sample(voxel_size=0.000005) #0.00001
         return final
+
+    
+    def get_PCD(self, colorImage, depthImage, camInfo):
+
+        colour_img = self.color_callback(colorImage)
+        depth_img = self.depth_callback(depthImage)
+        currPCD = self.cam_info_callback(colour_img, depth_img, camInfo)
+
+        tfBuffer1 = tf2_ros.Buffer()
+        listener1 = tf2_ros.TransformListener(tfBuffer1)
+
+        Tw_0 = self.pose2HTM( (tfBuffer1.lookup_transform('panda_link0', "tf_d0", rospy.Time(0), rospy.Duration(10.0))).transform)
+        transformation = self.getVSTF()
+        self.regPCD = self.draw_registration_result(currPCD, self.regPCD, transformation, Tw_0)
+
+    def get_mesh(self):
+        origin = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.00001) 
+        self.regMesh, densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(self.regPCD, depth=8)
+
+        vertices_to_remove = densities < np.quantile(densities, 0.01)
+        self.regMesh.remove_vertices_by_mask(vertices_to_remove)
+
+        if self.visualisations:
+            o3d.visualization.draw_geometries([self.regMesh,origin],zoom=0.7,front=[ 0.0, 0.0, -1.0], lookat=[-8.947535058590317e-07, 3.6505334648302034e-05,0.00028049998945789412], up=[0.0, -1.0,0.0])
+        self.regMesh.compute_triangle_normals()
+
+    
+    def runner(self, colorImage, depthImage, camInfo):
+
+        self.get_PCD(colorImage, depthImage, camInfo)
+        self.get_mesh()
+
 
 if __name__ == '__main__':
 
