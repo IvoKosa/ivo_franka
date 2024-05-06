@@ -77,7 +77,6 @@ class LRM_Reconstruction:
             image = Image.fromarray((image * 255.0).astype(np.uint8))
         timer.end("Processing images")
 
-
         logging.info(f"Running image...")
 
         timer.start("Running model")
