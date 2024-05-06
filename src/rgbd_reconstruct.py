@@ -13,7 +13,7 @@ import copy
 
 class RGBD_Reconstruction:
 
-    def __init__(self, object_size=[0.08,0.08,0.1], object_pos=[0.649997, 0] , vis=False,):
+    def __init__(self, object_size=[0.14,0.14,0.14], object_pos=[0.650221, 0], vis=False,):
 
         # Object size and position
         self.object_size = object_size
@@ -186,9 +186,7 @@ class RGBD_Reconstruction:
     
     def get_PCD(self, colorImage, depthImage, camInfo):
 
-        colour_img = self.color_callback(colorImage)
-        depth_img = self.depth_callback(depthImage)
-        currPCD = self.cam_info_callback(colour_img, depth_img, camInfo)
+        currPCD = self.cam_info_callback(colorImage, depthImage, camInfo)
 
         tfBuffer1 = tf2_ros.Buffer()
         listener1 = tf2_ros.TransformListener(tfBuffer1)

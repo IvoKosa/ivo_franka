@@ -36,10 +36,10 @@ class Evaluator:
             self.orient_match(Orientation)
 
         self.data = {
-            "SA - Diff": [],
             "Chamfer Distance": [],
             "Hausdorff Distance": [],
-            "Earth Movers Distance": []
+            "Earth Movers Distance": [],
+            "SA - Diff": []
         }
 
     def cpd_allignment(self):
@@ -92,6 +92,8 @@ class Evaluator:
         emd, _ = pcu.earth_movers_distance(pcd_arr1, pcd_arr2)
         self.data["Earth Movers Distance"].append(emd)
 
+        return self.data
+
 if __name__ == "__main__":
 
     pwd = "/home/ivokosa/Desktop/Results/Teapot_3_Views/"
@@ -109,29 +111,22 @@ if __name__ == "__main__":
 
         rgbd_pc = o3d.io.read_point_cloud(os.path.join(pc_dir ,file))
 
-        if i == (len(pc_files) - 1):
-
-            rgbd_obj = o3d.io.read_triangle_mesh(os.path.join(mesh_dir, "rgbdMesh_final.obj"))
-            tripo_fileName = "tripoMesh_" + str((i - 1)) + ".obj"
-            tripo_obj = o3d.io.read_triangle_mesh(os.path.join(mesh_dir , tripo_fileName))
-
-        else:
-
-            rgdb_fileName = "rgbdMesh_" + str(i) + ".obj"
-            rgbd_obj = o3d.io.read_triangle_mesh(os.path.join(mesh_dir , rgdb_fileName))
-            tripo_fileName = "tripoMesh_" + str(i) + ".obj"
-            tripo_obj = o3d.io.read_triangle_mesh(os.path.join(mesh_dir , tripo_fileName))
+        rgdb_fileName = "rgbdMesh_" + str(i) + ".obj"
+        rgbd_obj = o3d.io.read_triangle_mesh(os.path.join(mesh_dir , rgdb_fileName))
+        
+        tripo_fileName = "tripoMesh_" + str(i) + ".obj"
+        tripo_obj = o3d.io.read_triangle_mesh(os.path.join(mesh_dir , tripo_fileName))
 
         # ------------- ------------- Evaluating GT - RGBD ------------- -------------
 
-        eval = Evaluator(gt_obj, rgbd_obj, rgbd_rot, None, rgbd_pc)
+        eval = Evaluator(gt_obj, rgbd_obj, None, rgbd_pc)
         eval.metrics()
 
         # ------------- ------------- Evaluating GT - TripoSR ------------- -------------
 
         tripo_pc = tripo_obj.sample_points_uniformly(number_of_points=500)
 
-        eval2 = Evaluator(gt_obj, tripo_obj, tripo_rot, None, tripo_pc, )
+        eval2 = Evaluator(gt_obj, tripo_obj, None, tripo_pc)
         eval2.metrics()
 
         for key, value in (eval2.data).items():
@@ -148,8 +143,8 @@ if __name__ == "__main__":
         # ------------- ------------- Saving ------------- ------------- -------------
         print(eval.data)
 
-        df = pd.DataFrame(eval.data, index = ["GT - RGBD", "GT - TripoSR"]) # "RGBD - TripoSR" index = ["GT - RGBD", "GT - TripoSR"]
+        # df = pd.DataFrame(eval.data, index = ["GT - RGBD", "GT - TripoSR"]) # "RGBD - TripoSR" index = ["GT - RGBD", "GT - TripoSR"]
 
-        print(df)
-        img_name = "Image_" + str(i) + ".csv"
-        df.to_csv(img_name)
+        # print(df)
+        # img_name = "Image_" + str(i) + ".csv"
+        # df.to_csv(img_name)

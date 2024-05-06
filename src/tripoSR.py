@@ -116,7 +116,7 @@ class LRM_Reconstruction:
 if __name__ == "__main__":
 
     output_dir = "/home/ivokosa/Desktop/Results/"
-    run_str = "Teapot_3_Views"
+    run_str = "Cylinder_all_views"
     path_suffix = run_str + "/images/"
 
     path_str = os.path.join(output_dir, path_suffix)

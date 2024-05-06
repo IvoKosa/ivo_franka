@@ -16,10 +16,11 @@ from sensor_msgs.msg import Image, CameraInfo
 from franka_move import MoveGroupPyInterface
 from rgbd_reconstruct import RGBD_Reconstruction
 from LRM_reconstruct import LRM_Reconstruction
+from evaluator import Evaluator
 
 # ------------- ------------- Main ------------- -------------
 
-rospy.init_node("eval_runner", anonymous=True)
+rospy.init_node("pipeline_runner", anonymous=True)
 
 output_dir = "/home/ivokosa/Desktop/Reconst_Output/"
 
@@ -56,7 +57,17 @@ RGBD_r = RGBD_Reconstruction(teapot_object_size, teapot_object_position)
 # Tripo_r = LRM_Reconstruction()
 
 pose_list = [7, 9, 21]
-poses = move.getTFPose()
+poses = move.getTFPose(pose_list)
+
+data = {
+    "Img / Reconstruction Method": [],
+    "Chamfer Distance": [],
+    "Hausdorff Distance": [],
+    "Earth Movers Distance": [],
+    "SA - Diff": []
+    }
+
+gt_obj = o3d.io.read_triangle_mesh("/home/ivokosa/model_editor_models/utah_teapot/teapot.obj")
 
 for i in range(len(poses)):
 
@@ -89,10 +100,31 @@ for i in range(len(poses)):
 
     RGBD_mesh_name = new_dir + "/meshes/rgbdMesh_" + str(i) + ".obj"
     o3d.io.write_triangle_mesh(RGBD_mesh_name, RGBD_r.regMesh)
-    
-    # Uncomment if using Tripo:
-    # tripo_mesh_name = new_dir + "/meshes/tripoMesh_" + str(i) + ".obj"
-    # LRM_img = Tripo_r.runner(colour_name)
-    # LRM_mesh_name = new_dir + "/meshes/tripoMesh_" + str(i) + ".obj"
-    # o3d.io.write_triangle_mesh(LRM_mesh_name, RGBD_r.regMesh)
 
+    # LRM_mesh = Tripo_r.runner(colour_name)
+    # LRM_mesh_name = new_dir + "/meshes/tripoMesh_" + str(i) + ".obj"
+    # o3d.io.write_triangle_mesh(LRM_mesh_name, LRM_mesh)
+    
+    # ------------- ------------- Gathering Metrics  ------------- -------------
+
+    # eval_GT_RGBD = Evaluator(gt_obj, RGBD_r.regMesh, None, RGBD_r.regPCD)
+    # eval_GT_LRM = Evaluator(gt_obj, LRM_mesh)
+
+    # RGBD_metrics = eval_GT_RGBD.metrics()
+    # LRM_metrics = eval_GT_LRM.metrics()
+
+    # ------------- ------------- Appending RGBD ------------- -------------
+    
+    # for key, value in (RGBD_metrics).items():
+    #     (data)[key].extend(value)
+
+    # RGBD_Img = "Img_" + str(i) + "_RGBD"
+    # data["Img / Reconstruction Method"].append(RGBD_Img)
+
+    # ------------- ------------- Appending LRM ------------- -------------
+
+    # for key, value in (LRM_metrics).items():
+    #     (data)[key].extend(value)
+
+    # LRM_Img = "Img_" + str(i) + "_LRM"
+    # data["Img / Reconstruction Method"].append(LRM_Img)
