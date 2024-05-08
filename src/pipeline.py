@@ -4,6 +4,7 @@
 import cv2
 import os
 import numpy as np
+import pandas as pd
 import open3d as o3d
 
 # ROS Imports 
@@ -54,7 +55,7 @@ teapot_object_position = [0.650221, 0]
 RGBD_r = RGBD_Reconstruction(teapot_object_size, teapot_object_position)
 
 # Uncomment if using Tripo:
-# Tripo_r = LRM_Reconstruction()
+Tripo_r = LRM_Reconstruction()
 
 pose_list = [7, 9, 21]
 poses = move.getTFPose(pose_list)
@@ -82,18 +83,19 @@ for i in range(len(poses)):
     depthImage = rospy.wait_for_message("/camera/aligned_depth_to_color/image_raw", Image, timeout=20)
     camInfo = rospy.wait_for_message("/camera/aligned_depth_to_color/camera_info", CameraInfo, timeout=20)
 
-    colour_img = bridge.imgmsg_to_cv2(colorImage, "rgb8")
+    colour_img_rgb = bridge.imgmsg_to_cv2(colorImage, "rgb8")
+    colour_img_bgr = bridge.imgmsg_to_cv2(colorImage, "bgr8")
     depth_img = bridge.imgmsg_to_cv2(depthImage, "32FC1")
 
     colour_name = new_dir + "/images/" + "colour_" + str(i) + ".png"
     depth_name = new_dir + "/images/" + "depth_" + str(i) + ".png"
 
-    cv2.imwrite(colour_name, colour_img)
+    cv2.imwrite(colour_name, colour_img_bgr)
     cv2.imwrite(depth_name, depth_img)
 
     # ------------- ------------- Running Reconstructions ------------- -------------
 
-    RGBD_r.runner(colour_img, depth_img, camInfo)
+    RGBD_r.runner(colour_img_rgb, depth_img, camInfo)
 
     RGBD_pc_name = new_dir + "/point_clouds/rgdbPc_" + str(i) + ".ply"
     o3d.io.write_point_cloud(RGBD_pc_name, RGBD_r.regPCD)
@@ -101,30 +103,34 @@ for i in range(len(poses)):
     RGBD_mesh_name = new_dir + "/meshes/rgbdMesh_" + str(i) + ".obj"
     o3d.io.write_triangle_mesh(RGBD_mesh_name, RGBD_r.regMesh)
 
-    # LRM_mesh = Tripo_r.runner(colour_name)
-    # LRM_mesh_name = new_dir + "/meshes/tripoMesh_" + str(i) + ".obj"
-    # o3d.io.write_triangle_mesh(LRM_mesh_name, LRM_mesh)
+    LRM_mesh = Tripo_r.runner(colour_name)
+    LRM_mesh_name = new_dir + "/meshes/tripoMesh_" + str(i) + ".obj"
+    o3d.io.write_triangle_mesh(LRM_mesh_name, LRM_mesh)
     
     # ------------- ------------- Gathering Metrics  ------------- -------------
 
-    # eval_GT_RGBD = Evaluator(gt_obj, RGBD_r.regMesh, None, RGBD_r.regPCD)
-    # eval_GT_LRM = Evaluator(gt_obj, LRM_mesh)
+    eval_GT_RGBD = Evaluator(gt_obj, RGBD_r.regMesh, None, RGBD_r.regPCD)
+    eval_GT_LRM = Evaluator(gt_obj, LRM_mesh)
 
-    # RGBD_metrics = eval_GT_RGBD.metrics()
-    # LRM_metrics = eval_GT_LRM.metrics()
+    RGBD_metrics = eval_GT_RGBD.metrics()
+    LRM_metrics = eval_GT_LRM.metrics()
 
     # ------------- ------------- Appending RGBD ------------- -------------
     
-    # for key, value in (RGBD_metrics).items():
-    #     (data)[key].extend(value)
+    for key, value in (RGBD_metrics).items():
+        (data)[key].extend(value)
 
-    # RGBD_Img = "Img_" + str(i) + "_RGBD"
-    # data["Img / Reconstruction Method"].append(RGBD_Img)
+    RGBD_Img = "Img_" + str(i) + "_RGBD"
+    data["Img / Reconstruction Method"].append(RGBD_Img)
 
     # ------------- ------------- Appending LRM ------------- -------------
 
-    # for key, value in (LRM_metrics).items():
-    #     (data)[key].extend(value)
+    for key, value in (LRM_metrics).items():
+        (data)[key].extend(value)
 
-    # LRM_Img = "Img_" + str(i) + "_LRM"
-    # data["Img / Reconstruction Method"].append(LRM_Img)
+    LRM_Img = "Img_" + str(i) + "_LRM"
+    data["Img / Reconstruction Method"].append(LRM_Img)
+
+    print(data)
+    df = pd.DataFrame(data)
+    df.to_csv("/home/ivokosa/fullRun.csv")

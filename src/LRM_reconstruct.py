@@ -97,7 +97,7 @@ class LRM_Reconstruction:
 if __name__ == "__main__":
 
     output_dir = "/home/ivokosa/Desktop/Results/"
-    run_str = "bear_colour_img"
+    run_str = "bear_colour_brown"
     out_dir = output_dir + run_str + "/"
 
     path_suffix = run_str + "/images/"
