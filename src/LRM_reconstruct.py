@@ -96,32 +96,38 @@ class LRM_Reconstruction:
 
 if __name__ == "__main__":
 
-    output_dir = "/home/ivokosa/Desktop/Results/"
-    run_str = "bear_colour_brown"
+    def sorter(fileName):
+        return int(str(fileName)[7:-4])
+
+    output_dir = "/home/ivokosa/Desktop/Reconstruction_output/"
+    run_str = "4"
     out_dir = output_dir + run_str + "/"
+    prefix_len = len(out_dir) + 14
 
     path_suffix = run_str + "/images/"
     path_str = os.path.join(output_dir, path_suffix)
     files = os.listdir(path_str)
     filtered_files = [file for file in files if file.startswith("colour_")]
-    filtered_files.sort()
+    filtered_files.sort(key=sorter)
     file_list = [os.path.join(path_str, i) for i in filtered_files]
 
     print("Running Length: ", str(len(file_list)))
+    print(file_list)
 
     for i, file in enumerate(file_list):
 
-        # if i <= 13:
-        #     continue
+        if i <= 0:
+            continue
 
         print("Run Number: ", str(i))
 
         run = LRM_Reconstruction()
-        mesh_name = out_dir + "meshes/tripoMesh_" + str(i) + ".obj"
 
+        mesh_name = out_dir + "meshes/LRM_Mesh_" + str(file[prefix_len:-4]) + ".obj"
         mesh = run.runner(file)
+
         o3d.io.write_triangle_mesh(mesh_name, mesh)
 
-        print("Sleeping: ", str(i))
+        print("Sleeping on Iteration: ", str(i))
 
         time.sleep(15)

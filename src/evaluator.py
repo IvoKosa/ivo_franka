@@ -85,14 +85,23 @@ class Evaluator:
 
 if __name__ == "__main__":
 
+    # For further use: 
+    # Change directories main_dir to match output dir specified in pipeline.py 
+    # Alternatively this can lead to any directory with the following structure, which is automaticall instantiated by pipeline.py
+    # main dir:
+    #    |_ sub_dir
+    #          |_ images (images labled as: "colour_(viewpoint_num).png" or "depth_(viewpoint_num).png")
+    #          |_ meshes (meshes labled as: "LRM_Mesh_(viewpoint_num).obj" or "rgbdMesh_(viewpoint_num).obj")
+    #          |_ point_clouds (point clouds labled as: "rgbdPc_(viewpoint_num).ply")
+
     def sorter(fileName):
         return int(str(fileName)[7:-4])
 
     # pwd = "/home/ivokosa/Desktop/Results/teapot_3_views/"
     # gt_obj = o3d.io.read_triangle_mesh("/home/ivokosa/model_editor_models/utah_teapot/teapot.obj")
 
-    main_dir = "/home/ivokosa/Desktop/Results/"
-    sub_dir = "bear_colour_brown"
+    main_dir = "/home/ivokosa/Desktop/Reconstruction_output/"
+    sub_dir = "4"
     pwd = main_dir + sub_dir + "/"
     gt_obj = o3d.io.read_triangle_mesh("/home/ivokosa/model_editor_models/teddy_bear/TeddyBear-fixed.obj")
 
@@ -101,7 +110,15 @@ if __name__ == "__main__":
     pc_files = os.listdir(pc_dir)
     pc_files.sort(key=sorter)
 
-    data = {
+    data_obj1 = {
+        "Img / Reconstruction Method": [],
+        "Chamfer Distance": [],
+        "Hausdorff Distance": [],
+        "Earth Movers Distance": [],
+        "SA - Diff": []
+    }
+
+    data_obj2 = {
         "Img / Reconstruction Method": [],
         "Chamfer Distance": [],
         "Hausdorff Distance": [],
@@ -118,7 +135,7 @@ if __name__ == "__main__":
         rgdb_fileName = "rgbdMesh_" + str(num) + ".obj"
         rgbd_obj = o3d.io.read_triangle_mesh(os.path.join(mesh_dir , rgdb_fileName))
         
-        tripo_fileName = "tripoMesh_" + str(num) + ".obj"
+        tripo_fileName = "LRM_Mesh_" + str(num) + ".obj"
         tripo_obj = o3d.io.read_triangle_mesh(os.path.join(mesh_dir , tripo_fileName))
 
         # ------------- ------------- Evaluating GT - RGBD ------------- -------------
@@ -127,10 +144,10 @@ if __name__ == "__main__":
         metrics = eval.metrics()
 
         for key, value in (metrics).items():
-            (data)[key].extend(value)
+            (data_obj1)[key].extend(value)
 
         RGBD_Img = "Img_" + str(num) + "_RGBD-GT"
-        data["Img / Reconstruction Method"].append(RGBD_Img)
+        data_obj1["Img / Reconstruction Method"].append(RGBD_Img)
 
         # ------------- ------------- Evaluating GT - TripoSR ------------- -------------
 
@@ -138,12 +155,15 @@ if __name__ == "__main__":
         metrics = eval2.metrics()
 
         for key, value in (metrics).items():
-            (data)[key].extend(value)
+            (data_obj2)[key].extend(value)
 
         LRM_Img = "Img_" + str(num) + "_LRM-GT"
-        data["Img / Reconstruction Method"].append(LRM_Img)
+        data_obj2["Img / Reconstruction Method"].append(LRM_Img)
 
         # print(data)
 
-    df = pd.DataFrame(data)
-    df.to_csv("/home/ivokosa/" + sub_dir + ".csv")
+    df1 = pd.DataFrame(data_obj1)
+    df1.to_csv("/home/ivokosa/" + sub_dir + "_obj1.csv")
+
+    df2 = pd.DataFrame(data_obj2)
+    df2.to_csv("/home/ivokosa/" + sub_dir + "_obj2.csv")

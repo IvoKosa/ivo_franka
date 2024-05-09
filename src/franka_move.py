@@ -123,7 +123,7 @@ class MoveGroupPyInterface(object):
         #cylpose.pose.orientation.y = 0#-0.00451694
         #cylpose.pose.orientation.z = 0#-0.02485613
         #cylpose.pose.orientation.w = 1#0.35097694
-        scene.add_box("unit_cylinder", cylpose,size = (0.08, 0.08, 0.1))
+        scene.add_box("unit_cylinder", cylpose,size = (0.14, 0.14, 0.14))
 
     # ------------------------- Getting Poses -------------------------
 

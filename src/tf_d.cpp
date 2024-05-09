@@ -84,11 +84,8 @@ int main(int argc, char** argv){
       sum += pos_list[i];
     }
 
-    cout << "HELO::::" << endl;
-    cout << sum << endl;
-
     // if (n.getParam("pos_list", pos_list)) {
-    //   cout << "HELO::::" << endl;
+    //   cout << "HELLO::::" << endl;
     // }
 
     // int rad_param;
@@ -121,7 +118,7 @@ int main(int argc, char** argv){
             else if (estado== "Move Hemisphere" and estado_pre!="Move Hemisphere"){
             //ros::spinOnce();
              cout<<"replace"<<endl;
-             cout<<"estadooo:"<<estado<<endl;
+             cout<<"State:"<<estado<<endl;
              Eigen::Vector3d c(0.65, 0, 0.09);
              view_space.update(c,r);
              vector<geometry_msgs::TransformStamped> tS = view_space.views2tStamped();
@@ -130,8 +127,6 @@ int main(int argc, char** argv){
             }
             estado_pre = estado;
             
-            //cout<<"estadooo:"<<exito<<endl;
-            //cout<<"frame:"<<tf_frame<<endl;
             loop_rate.sleep();
             //++count;
     }
