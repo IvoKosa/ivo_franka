@@ -101,7 +101,7 @@ if __name__ == "__main__":
     # gt_obj = o3d.io.read_triangle_mesh("/home/ivokosa/model_editor_models/utah_teapot/teapot.obj")
 
     main_dir = "/home/ivokosa/Desktop/Reconstruction_output/"
-    sub_dir = "4"
+    sub_dir = "bear_colour_brown"
     pwd = main_dir + sub_dir + "/"
     gt_obj = o3d.io.read_triangle_mesh("/home/ivokosa/model_editor_models/teddy_bear/TeddyBear-fixed.obj")
 
@@ -163,7 +163,7 @@ if __name__ == "__main__":
         # print(data)
 
     df1 = pd.DataFrame(data_obj1)
-    df1.to_csv("/home/ivokosa/" + sub_dir + "_obj1.csv")
+    df1.to_csv(pwd + "rgbd.csv")
 
     df2 = pd.DataFrame(data_obj2)
-    df2.to_csv("/home/ivokosa/" + sub_dir + "_obj2.csv")
+    df2.to_csv(pwd + "lrm.csv")
