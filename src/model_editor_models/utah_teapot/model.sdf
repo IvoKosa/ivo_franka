@@ -23,7 +23,7 @@
         <pose>0 0 0 0 -0 0</pose>
         <geometry>
           <mesh>
-            <uri>/home/ivokosa/Downloads/teapot.obj</uri>
+            <uri>/home/ivokosa/ros/noetic/system/src/ivo_franka/src/model_editor_models/utah_teapot/teapot.obj</uri>
             <scale>0.005 0.005 0.005</scale>
           </mesh>
         </geometry>
@@ -50,7 +50,7 @@
         <pose>0 0 0 0 -0 0</pose>
         <geometry>
           <mesh>
-            <uri>/home/ivokosa/Downloads/teapot.obj</uri>
+            <uri>/home/ivokosa/ros/noetic/system/src/ivo_franka/src/model_editor_models/utah_teapot/teapot.obj</uri>
             <scale>0.005 0.005 0.005</scale>
           </mesh>
         </geometry>

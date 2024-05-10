@@ -116,9 +116,6 @@ if __name__ == "__main__":
 
     for i, file in enumerate(file_list):
 
-        if i <= 0:
-            continue
-
         print("Run Number: ", str(i))
 
         run = LRM_Reconstruction()

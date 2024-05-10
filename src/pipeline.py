@@ -33,7 +33,7 @@ from evaluator import Evaluator
 # Use of the pipeline as is will automatically implement both reconstruction methods for the viewpoints selected 
 # and compare them to the ground truth
 
-rospy.init_node("pipeline_runner", anonymous=True)
+# rospy.init_node("pipeline_runner", anonymous=True)
 
 output_dir = "/home/ivokosa/Desktop/Reconstruction_output/"
 
@@ -155,8 +155,8 @@ for i in range(len(poses)):
     data_lrm["Img / Reconstruction Method"].append(LRM_Img)
 
 df1 = pd.DataFrame(data_rgbd)
-df1.to_csv("/home/ivokosa/rgbd_Metrics.csv")
+df1.to_csv(new_dir + "/rgbd_Metrics.csv")
 
 df2 = pd.DataFrame(data_lrm)
-df2.to_csv("/home/ivokosa/lrm_Metrics.csv")
+df2.to_csv(new_dir + "/lrm_Metrics.csv")
 
